@@ -1,9 +1,12 @@
 # Node
 node_modules/
 
-# Build output
+# Build output (dev hot-reload artifact at project root)
 main.js
 main.js.map
+
+# Production build directory
+dist/
 
 # IDE
 .vscode/

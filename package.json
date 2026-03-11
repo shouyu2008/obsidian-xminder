@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "NODE_OPTIONS='' node esbuild.config.mjs",
     "build": "NODE_OPTIONS='' tsc --noEmit --skipLibCheck && NODE_OPTIONS='' node esbuild.config.mjs production",
+    "build:clean": "rm -rf dist && npm run build",
+    "typecheck": "NODE_OPTIONS='' tsc --noEmit --skipLibCheck",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [

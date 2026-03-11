@@ -4,6 +4,7 @@ import builtins from "builtin-modules";
 import { fileURLToPath } from "url";
 import { dirname, resolve, join } from "path";
 import { createRequire } from "module";
+import { cpSync, mkdirSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const nodeModulesPath = resolve(__dirname, "node_modules");
@@ -40,6 +41,9 @@ If you want to view the source, please visit the github repository of this plugi
 
 const prod = process.argv[2] === "production";
 
+// Output directory: dist/ for production, project root for dev (hot-reload friendly)
+const outDir = prod ? "dist" : ".";
+
 const context = await esbuild.context({
   banner: {
     js: banner,
@@ -69,11 +73,22 @@ const context = await esbuild.context({
   logLevel: "info",
   sourcemap: prod ? false : "inline",
   treeShaking: true,
-  outfile: "main.js",
+  outfile: `${outDir}/main.js`,
 });
 
 if (prod) {
+  // Ensure dist/ exists
+  mkdirSync(outDir, { recursive: true });
+
   await context.rebuild();
+  await context.dispose();
+
+  // Copy static plugin assets into dist/
+  for (const asset of ["manifest.json", "styles.css"]) {
+    cpSync(asset, `${outDir}/${asset}`);
+  }
+
+  console.log(`\n✓ Build complete → ${outDir}/`);
   process.exit(0);
 } else {
   await context.watch();
