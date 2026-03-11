@@ -1,0 +1,11 @@
+{
+  "id": "obsidian-xminder",
+  "name": "XMinder",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Read, write and embed XMind files in Obsidian with interactive mind map view.",
+  "author": "obsidian-xminder",
+  "authorUrl": "https://github.com/obsidian-xminder/obsidian-xminder",
+  "fundingUrl": "",
+  "isDesktopOnly": false
+}

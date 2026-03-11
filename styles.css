@@ -1,0 +1,156 @@
+/* ==========================================================================
+   obsidian-xminder — styles.css
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   XMind View (full-screen editor)
+   -------------------------------------------------------------------------- */
+
+.xmind-view-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* The div that mind-elixir mounts into */
+.xmind-mind-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* mind-elixir container */
+.xmind-mind-wrapper me-main {
+  width: 100%;
+  height: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Error states
+   -------------------------------------------------------------------------- */
+
+.xmind-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  color: var(--text-error);
+  font-size: var(--font-ui-medium);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   Markdown embed preview  ![[file.xmind]]
+   -------------------------------------------------------------------------- */
+
+.xmind-embed-wrapper {
+  display: block;
+  width: 100%;
+  margin: 0.75em 0;
+}
+
+.xmind-embed-container {
+  position: relative;
+  width: 100%;
+  min-height: 150px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  background: var(--background-primary);
+  transition: box-shadow 0.15s ease;
+}
+
+.xmind-embed-container:hover {
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.xmind-embed-container me-main {
+  width: 100%;
+  height: 100%;
+}
+
+/* Loading indicator */
+.xmind-embed-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  background: var(--background-primary);
+  z-index: 1;
+}
+
+/* Error inside embed */
+.xmind-embed-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  text-align: center;
+  background: var(--background-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Settings page info section
+   -------------------------------------------------------------------------- */
+
+.xmind-settings-info {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin-top: 0.5em;
+}
+
+.xmind-settings-info ul {
+  margin: 0.5em 0 0.5em 1.5em;
+  padding: 0;
+}
+
+.xmind-settings-info li {
+  margin-bottom: 0.25em;
+}
+
+.xmind-settings-info code {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  background: var(--background-modifier-code-background);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-s);
+}
+
+/* --------------------------------------------------------------------------
+   Dark theme overrides
+   -------------------------------------------------------------------------- */
+
+.theme-dark .xmind-embed-container {
+  border-color: var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+/* --------------------------------------------------------------------------
+   mind-elixir toolbar integration — ensure it sits inside the view
+   -------------------------------------------------------------------------- */
+
+.xmind-mind-wrapper .mind-elixir-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+/* Ensure mind-elixir fills its container */
+.xmind-mind-wrapper > div[class^="mind-elixir"] {
+  width: 100% !important;
+  height: 100% !important;
+}
