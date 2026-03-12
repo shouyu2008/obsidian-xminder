@@ -752,17 +752,23 @@ export class XMindView extends FileView {
       this.mind.init(data);
 
       // Patch: allow dropping nodes onto root.
-      // mind-elixir's drag validation (Me function) rejects root as a drop target
-      // because root.nodeObj.parent is undefined. The B() function resets parent
-      // to undefined after every operation. We use defineProperty with a getter
-      // so parent always returns truthy for root, while still being "assignable"
-      // (the setter is a no-op). moveNodeIn already handles ME-ROOT correctly.
+      // mind-elixir's drag validation rejects root as a drop target
+      // because root.nodeObj.parent is undefined. Instead of modifying
+      // the object directly, we use a Proxy to intercept parent property
+      // access only when needed. This is safer than Object.defineProperty
+      // as it doesn't permanently alter the object's behavior.
       if (this.mind.nodeData) {
-        Object.defineProperty(this.mind.nodeData, "parent", {
-          get() { return true; },
-          set() { /* no-op: keep parent truthy for root */ },
-          configurable: true,
-          enumerable: true,
+        const originalNodeData = this.mind.nodeData;
+        this.mind.nodeData = new Proxy(originalNodeData, {
+          get(target, prop) {
+            if (prop === 'parent' && target === originalNodeData) {
+              return true;
+            }
+            return Reflect.get(target, prop);
+          },
+          set(target, prop, value) {
+            return Reflect.set(target, prop, value);
+          }
         });
       }
     } catch (initErr) {
