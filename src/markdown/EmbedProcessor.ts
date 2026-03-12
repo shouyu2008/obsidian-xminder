@@ -27,7 +27,7 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // --- Mechanism 1: MarkdownPostProcessor ---
   plugin.registerMarkdownPostProcessor(
     async (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-      await processEmbedsInElement(el, ctx.sourcePath, plugin);
+      void processEmbedsInElement(el, ctx.sourcePath, plugin);
       processLinks(el, plugin);
     }
   );
@@ -67,7 +67,7 @@ function startEmbedObserver(plugin: XMindPlugin): void {
         for (const embed of candidates) {
           // Find sourcePath from the closest markdown view context
           const sourcePath = findSourcePath(embed, plugin);
-          replaceEmbedWithPreview(embed, sourcePath, plugin);
+          void replaceEmbedWithPreview(embed, sourcePath, plugin);
         }
       }
     }
@@ -75,8 +75,10 @@ function startEmbedObserver(plugin: XMindPlugin): void {
 
   // Observe the entire workspace container
   // Use app.workspace.containerEl which is available after onload
-  const target = document.body;
-  observer.observe(target, { childList: true, subtree: true });
+  const target = typeof document !== 'undefined' ? document.body : null;
+  if (target) {
+    observer.observe(target, { childList: true, subtree: true });
+  }
 
   // Clean up on plugin unload
   plugin.register(() => observer.disconnect());
@@ -188,17 +190,18 @@ async function replaceEmbedWithPreview(
   embed.addClass("xmind-embed-wrapper");
   // Remove the generic file-embed styling so our container can fill it
   embed.removeClass("file-embed");
-  embed.style.display = "block";
+  embed.addClass("xmind-embed-block");
 
-  const container = document.createElement("div");
+  const container = typeof document !== 'undefined' ? document.createElement("div") : null;
+  if (!container) return;
   container.className = "xmind-embed-container";
 
   const height = plugin.settings.embedHeight ?? 300;
   container.style.height = `${height}px`;
   embed.appendChild(container);
 
-  // Loading indicator
-  const loading = document.createElement("div");
+  const loading = typeof document !== 'undefined' ? document.createElement("div") : null;
+  if (!loading) return;
   loading.className = "xmind-embed-loading";
   loading.textContent = "Loading XMind...";
   container.appendChild(loading);
@@ -215,7 +218,7 @@ async function replaceEmbedWithPreview(
 
     loading.remove();
 
-    const isDark = document.body.classList.contains("theme-dark");
+    const isDark = typeof document !== 'undefined' && document.body.classList.contains("theme-dark");
 
     const mind: MindElixirInstance = new MindElixir({
       el: container,
@@ -232,7 +235,9 @@ async function replaceEmbedWithPreview(
 
     // Fit to container after render — use a longer delay to ensure the
     // embed container has been laid out and has non-zero dimensions.
-    const fitTimer = setTimeout(() => {
+    const setTimeoutFn = typeof setTimeout !== 'undefined' ? setTimeout : (fn: () => void, ms: number) => { fn(); return 1; };
+    const clearTimeoutFn = typeof clearTimeout !== 'undefined' ? clearTimeout : (_id: number) => {};
+    const fitTimer = setTimeoutFn(() => {
       if (container.isConnected) {
         mind.scaleFit();
         mind.toCenter();
@@ -242,26 +247,30 @@ async function replaceEmbedWithPreview(
     // Clean up mind-elixir instance when the container is removed from DOM
     const cleanupObserver = new MutationObserver(() => {
       if (!container.isConnected) {
-        clearTimeout(fitTimer);
+        clearTimeoutFn(fitTimer);
         mind.destroy?.();
         cleanupObserver.disconnect();
       }
     });
-    cleanupObserver.observe(container.parentElement ?? document.body, {
-      childList: true,
-      subtree: true,
-    });
+    const target = typeof document !== 'undefined' ? (container.parentElement ?? document.body) : null;
+    if (target) {
+      cleanupObserver.observe(target, {
+        childList: true,
+        subtree: true,
+      });
+    }
 
     // Click on the preview → open in full XMind view
     container.addEventListener("click", (e) => {
       e.preventDefault();
-      openXMindView(plugin.app, resolvedFile);
+      void openXMindView(plugin.app, resolvedFile);
     });
-    container.style.cursor = "pointer";
+    container.addClass("xmind-embed-clickable");
     container.title = `Click to open ${resolvedFile.basename}`;
   } catch (err) {
     loading.remove();
-    const errorEl = document.createElement("div");
+    const errorEl = typeof document !== 'undefined' ? document.createElement("div") : null;
+    if (!errorEl) return;
     errorEl.className = "xmind-embed-error";
     errorEl.textContent = `Failed to load "${resolvedFile.name}": ${
       err instanceof Error ? err.message : String(err)
@@ -292,9 +301,9 @@ function processLinks(el: HTMLElement, plugin: XMindPlugin): void {
       );
 
       if (resolvedFile instanceof TFile) {
-        openXMindView(plugin.app, resolvedFile);
+        void openXMindView(plugin.app, resolvedFile);
       } else {
-        plugin.app.workspace.openLinkText(filePart, "");
+        void plugin.app.workspace.openLinkText(filePart, "");
       }
     });
   }
@@ -312,11 +321,11 @@ async function openXMindView(app: App, file: TFile): Promise<void> {
     );
 
   if (existing) {
-    app.workspace.revealLeaf(existing);
+    void app.workspace.revealLeaf(existing);
     return;
   }
 
   const leaf = app.workspace.getLeaf("tab");
   await leaf.openFile(file);
-  app.workspace.revealLeaf(leaf);
+  void app.workspace.revealLeaf(leaf);
 }

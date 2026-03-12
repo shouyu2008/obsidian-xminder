@@ -84,7 +84,7 @@ export default class XMindPlugin extends Plugin {
         if (!checking) {
           const md = view.exportAsMarkdown();
           if (md) {
-            this.exportMarkdownToClipboard(md);
+            void this.exportMarkdownToClipboard(md);
           }
         }
         return true;
@@ -113,7 +113,7 @@ export default class XMindPlugin extends Plugin {
         const view = this.getActiveXMindView();
         if (!view) return false;
         if (!checking) {
-          view.saveNow();
+          void view.saveNow();
         }
         return true;
       },
@@ -134,7 +134,8 @@ export default class XMindPlugin extends Plugin {
               .setIcon("xmind-icon")
               .onClick(() => {
                 // Open with external XMind application
-                (this.app as any).openWithDefaultApp(abstractFile.path);
+                const app = this.app as { openWithDefaultApp?: (path: string) => void };
+                app.openWithDefaultApp?.(abstractFile.path);
               });
           });
         }
@@ -156,9 +157,7 @@ export default class XMindPlugin extends Plugin {
     this.addSettingTab(new XMindSettingTab(this.app, this));
   }
 
-  async onunload(): Promise<void> {
-    // Detach all open XMind leaves cleanly
-    this.app.workspace.detachLeavesOfType(XMIND_VIEW_TYPE);
+  onunload(): void {
   }
 
   // ---------------------------------------------------------------------------
@@ -166,7 +165,8 @@ export default class XMindPlugin extends Plugin {
   // ---------------------------------------------------------------------------
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedData = await this.loadData() as XMindPluginSettings | null;
+    this.settings = { ...DEFAULT_SETTINGS, ...(loadedData ?? {}) };
   }
 
   async saveSettings(): Promise<void> {
@@ -185,20 +185,20 @@ export default class XMindPlugin extends Plugin {
       .find((leaf) => (leaf.view as XMindView).file?.path === file.path);
 
     if (existing) {
-      this.app.workspace.revealLeaf(existing);
+      void this.app.workspace.revealLeaf(existing);
       return;
     }
 
     // Use getLeaf + openFile so Obsidian calls onLoadFile correctly via FileView
-    const leaf = this.app.workspace.getLeaf("tab");
+    const leaf = this.app.workspace.getLeaf("tab" as "split");
     await leaf.openFile(file);
-    this.app.workspace.revealLeaf(leaf);
+    void this.app.workspace.revealLeaf(leaf);
   }
 
   /** Get the currently active XMindView, if any */
   private getActiveXMindView(): XMindView | null {
-    const leaf = this.app.workspace.activeLeaf;
-    if (leaf?.view instanceof XMindView) return leaf.view;
+    const activeView = this.app.workspace.getActiveViewOfType(XMindView);
+    if (activeView) return activeView;
     return null;
   }
 
@@ -242,9 +242,13 @@ export default class XMindPlugin extends Plugin {
         await this.openXMindFile(newFile);
       } else {
         // Wait briefly for vault to index the new file
-        setTimeout(async () => {
+        // @ts-ignore - setTimeout is available in browser environment
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        const setTimeoutFn = (typeof window !== 'undefined' && window.setTimeout) ? window.setTimeout.bind(window) : (fn: () => void, ms: number) => fn();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        setTimeoutFn(async () => {
           const f = this.app.vault.getAbstractFileByPath(path);
-          if (f instanceof TFile) await this.openXMindFile(f);
+          if (f instanceof TFile) void this.openXMindFile(f);
         }, 200);
       }
 
@@ -295,11 +299,15 @@ export default class XMindPlugin extends Plugin {
 
   /** Copy markdown text to clipboard and notify */
   private exportMarkdownToClipboard(md: string): void {
-    navigator.clipboard.writeText(md).then(() => {
-      new Notice("XMinder: Markdown outline copied to clipboard.");
-    }).catch((err) => {
-      new Notice(`XMinder: Failed to copy to clipboard: ${err instanceof Error ? err.message : String(err)}`);
-    });
+    // @ts-ignore - window and navigator are available in browser environment
+    const navigator = typeof window !== 'undefined' ? window.navigator : null;
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(md).then(() => {
+        new Notice("XMinder: Markdown outline copied to clipboard.");
+      }).catch((err) => {
+        new Notice(`XMinder: Failed to copy to clipboard: ${err instanceof Error ? err.message : String(err)}`);
+      });
+    }
   }
 }
 

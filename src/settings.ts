@@ -28,7 +28,9 @@ export class XMindSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "XMinder Settings" });
+    new Setting(containerEl)
+      .setName("XMinder preferences")
+      .setHeading();
 
     // -----------------------------------------------------------------------
     // Auto-save delay
@@ -108,7 +110,9 @@ export class XMindSettingTab extends PluginSettingTab {
     // -----------------------------------------------------------------------
     // Info section
     // -----------------------------------------------------------------------
-    containerEl.createEl("h3", { text: "Usage" });
+    new Setting(containerEl)
+      .setName("Usage")
+      .setHeading();
     const info = containerEl.createEl("div", { cls: "xmind-settings-info" });
     info.createEl("p", {
       text: "Supported syntax in Markdown notes:",

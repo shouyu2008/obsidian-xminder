@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import type { XMindData, XMindMultiSheetData, XMindNode, XMindContentJsonTopic } from "./types";
+import type { XMindMultiSheetData, XMindNode, XMindContentJsonTopic } from "./types";
 
 /**
  * Serialize XMindMultiSheetData back to a .xmind file (ArrayBuffer).

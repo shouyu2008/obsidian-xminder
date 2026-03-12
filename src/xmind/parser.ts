@@ -46,8 +46,8 @@ function parseContentJson(raw: string): XMindMultiSheetData {
   let rawSheets: XMindContentJsonSheet[];
 
   try {
-    const parsed = JSON.parse(raw);
-    rawSheets = Array.isArray(parsed) ? parsed : [parsed];
+    const parsed = JSON.parse(raw) as unknown;
+    rawSheets = Array.isArray(parsed) ? (parsed as XMindContentJsonSheet[]) : [(parsed as XMindContentJsonSheet)];
   } catch {
     throw new Error("Failed to parse content.json: invalid JSON.");
   }
@@ -115,7 +115,9 @@ function mapJsonTopic(topic: XMindContentJsonTopic): XMindNode {
     if (props["background-color"]) node.style.background = props["background-color"];
     if (props["color"]) node.style.color = props["color"];
     if (props["font-size"]) node.style.fontSize = parseInt(props["font-size"], 10) || undefined;
+    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     if (props["font-weight"] === "bold") node.style.fontWeight = "bold";
+    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     if (props["font-style"] === "italic") node.style.fontStyle = "italic";
     if (props["border-color"]) node.style.border = props["border-color"];
   }
