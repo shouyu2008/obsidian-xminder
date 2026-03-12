@@ -1,7 +1,7 @@
 {
   "name": "obsidian-xminder",
   "version": "1.0.1",
-  "description": "Read, write and embed XMind files in Obsidian",
+  "description": "Supports functions such as creating, viewing, editing XMind files, and embedding them into Markdown.",
   "main": "main.js",
   "scripts": {
     "dev": "NODE_OPTIONS='' node esbuild.config.mjs",

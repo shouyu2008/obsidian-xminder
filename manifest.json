@@ -1,11 +1,11 @@
 {
-  "id": "obsidian-xminder",
-  "name": "XMinder",
+  "id": "XMinder",
+  "name": "XMind file operator",
   "version": "1.0.1",
   "minAppVersion": "1.0.1",
-  "description": "Read, write and embed XMind files in Obsidian with interactive mind map view.",
-  "author": "obsidian-xminder",
-  "authorUrl": "https://github.com/shouyu2008/obsidian-xminder",
-  "fundingUrl": "",
+  "description": "Supports functions such as creating, viewing, editing XMind files, and embedding them into Markdown.",
+  "author": "shouyu2008",
+  "authorUrl": "https://github.com/shouyu2008",
+  "fundingUrl": "https://github.com/shouyu2008",
   "isDesktopOnly": false
 }
