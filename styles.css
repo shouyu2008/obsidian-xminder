@@ -56,9 +56,18 @@
    -------------------------------------------------------------------------- */
 
 .xmind-embed-wrapper {
-  display: block;
+  display: block !important;
   width: 100%;
   margin: 0.75em 0;
+  /* Override Obsidian's default file-embed inline styles */
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Ensure the wrapper takes proper block-level space in Live Preview */
+.cm-embed-block .xmind-embed-wrapper,
+.markdown-reading-view .xmind-embed-wrapper {
+  display: block !important;
 }
 
 .xmind-embed-container {
@@ -79,6 +88,14 @@
 .xmind-embed-container me-main {
   width: 100%;
   height: 100%;
+}
+
+/* Hide the generic file-embed icon/title that Obsidian inserts by default.
+   We replace the entire content but this guard prevents flash-of-content. */
+.xmind-embed-wrapper .file-embed-icon,
+.xmind-embed-wrapper .file-embed-title,
+.xmind-embed-wrapper .file-embed-link {
+  display: none !important;
 }
 
 /* Loading indicator */
