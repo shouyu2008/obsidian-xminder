@@ -26,7 +26,7 @@ export interface XMindNode {
 }
 
 /**
- * Top-level XMind document data.
+ * Single sheet (canvas) within an XMind document.
  */
 export interface XMindData {
   /** Main root topic */
@@ -35,6 +35,13 @@ export interface XMindData {
   title?: string;
   /** Theme name from original file */
   theme?: string;
+}
+
+/**
+ * Top-level XMind document with multiple sheets.
+ */
+export interface XMindMultiSheetData {
+  sheets: XMindData[];
 }
 
 /**

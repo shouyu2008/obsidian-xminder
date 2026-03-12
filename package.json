@@ -1,6 +1,6 @@
 {
   "name": "obsidian-xminder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read, write and embed XMind files in Obsidian",
   "main": "main.js",
   "scripts": {

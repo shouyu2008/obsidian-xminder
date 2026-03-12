@@ -24,8 +24,14 @@
   position: relative;
 }
 
-/* mind-elixir container */
-.xmind-mind-wrapper me-main {
+/* mind-elixir creates a .map-container div inside the wrapper el */
+.xmind-mind-wrapper .map-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure me-main fills the map-container */
+.xmind-mind-wrapper .map-container me-main {
   width: 100%;
   height: 100%;
 }
@@ -139,18 +145,285 @@
 }
 
 /* --------------------------------------------------------------------------
-   mind-elixir toolbar integration — ensure it sits inside the view
+   mind-elixir layout — spacing only, no structural changes
    -------------------------------------------------------------------------- */
 
-.xmind-mind-wrapper .mind-elixir-toolbar {
+/*
+ * DOM structure (SIDE mode):
+ *
+ *   me-main.lhs  (direction:rtl — child nodes appear LEFT of parent via rtl)
+ *     me-wrapper  (display:block, width:fit-content)
+ *       me-parent  (inline-block, vertical-align:middle) ← level-2 node
+ *       me-children (inline-block, vertical-align:middle) ← sub-nodes list
+ *         me-wrapper × N  ← one per child node
+ *
+ * ROOT CAUSE OF LHS CROWDING:
+ *   me-wrapper is display:block and left-aligns within its container by default.
+ *   .lhs has direction:rtl, which reverses the inline (me-parent / me-children)
+ *   order but does NOT change block alignment for me-wrapper.
+ *   Result: all me-wrappers left-align to the me-main left edge (the far-left
+ *   boundary set by the widest subtree). Leaf nodes from shallow subtrees end up
+ *   at the same far-left X as deep subtree leaves — no proportional indentation.
+ *
+ * FIX: .lhs me-wrapper { margin-inline-end: auto }
+ *   In RTL context, inline-end = left. margin-inline-end:auto = auto left margin
+ *   = block is pushed to the inline-start (right) edge of its container.
+ *   Each me-wrapper now right-aligns within its parent, so every level indents
+ *   by exactly the width of the parent node rather than all sharing me-main's
+ *   left edge. Proper tree expansion is restored.
+ *
+ *   This is safe for SVG connector math: offsetLeft values change consistently
+ *   with the new alignment, so the bezier paths follow the nodes correctly.
+ *
+ * Other tunables:
+ *   1. --gap CSS variable (horizontal padding on me-parent, default 30px)
+ *   2. me-main > me-wrapper margin (level-2 node distance from root)
+ *   3. me-children > me-wrapper margin (vertical breathing room)
+ */
+
+/* FIX: right-align every me-wrapper inside .lhs so each subtree expands
+ * rightward (toward root) instead of all sharing the far-left boundary. */
+.xmind-mind-wrapper .map-container .lhs me-wrapper {
+  margin-inline-end: auto;
+}
+
+/* Horizontal level spacing (--gap = padding on each me-parent).
+ * Larger value = more space between a parent node and its children. */
+.xmind-mind-wrapper .map-container {
+  --gap: 55px !important;
+}
+
+/* Level-2 node distance from root (default margin: 45px 65px). */
+.xmind-mind-wrapper .map-container me-main > me-wrapper {
+  margin-left: 50px !important;
+  margin-right: 50px !important;
+}
+
+/* Vertical breathing room between level-3+ sibling nodes */
+.xmind-mind-wrapper .map-container me-children > me-wrapper {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+/* Level 3 node topic: pill style */
+.xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc {
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 4px 12px !important;
+  color: var(--text-normal);
+  white-space: nowrap;
+}
+
+/* Level 4+ node topic: lighter pill */
+.xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 3px 10px !important;
+  color: var(--text-muted);
+}
+
+/* Node cursor: pointer on hover, text cursor when editing */
+.xmind-mind-wrapper .map-container me-tpc {
+  cursor: pointer !important;
+}
+.xmind-mind-wrapper .map-container #input-box,
+.xmind-mind-wrapper .map-container me-tpc[contenteditable],
+.xmind-mind-wrapper .map-container me-tpc[contenteditable="true"],
+.xmind-mind-wrapper .map-container me-tpc[contenteditable="plaintext-only"] {
+  cursor: text !important;
+}
+
+/* Selected node — bright outline for all selected nodes (root, L1, L2+) */
+.xmind-mind-wrapper .map-container me-tpc.selected {
+  outline: 3px solid #4fc3f7 !important;
+  outline-offset: 2px !important;
+  border-color: #4fc3f7 !important;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5) !important;
+}
+
+/* Drag-and-drop insert preview — match selected style for all nodes including root */
+.xmind-mind-wrapper .map-container me-tpc .insert-preview.show {
+  background: none !important;
+  opacity: 1 !important;
+}
+.xmind-mind-wrapper .map-container me-tpc .insert-preview.in.show {
+  outline: 3px solid #4fc3f7 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5) !important;
+  border-radius: inherit;
+  height: 100% !important;
+  top: 0 !important;
+  pointer-events: none;
+}
+.xmind-mind-wrapper .map-container me-tpc .insert-preview.before.show,
+.xmind-mind-wrapper .map-container me-tpc .insert-preview.after.show {
+  height: 3px !important;
+  background: #4fc3f7 !important;
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(79, 195, 247, 0.6) !important;
+}
+
+/* Theme light overrides */
+.theme-light .xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.theme-light .xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+/* --------------------------------------------------------------------------
+   Custom toolbars
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   Sheet selector (multi-canvas dropdown, right-top)
+   -------------------------------------------------------------------------- */
+
+.xmind-sheet-selector {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  right: 12px;
+  top: 12px;
   z-index: 10;
 }
 
-/* Ensure mind-elixir fills its container */
-.xmind-mind-wrapper > div[class^="mind-elixir"] {
+.xmind-sheet-select {
+  padding: 4px 24px 4px 10px;
+  font-size: 13px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  min-width: 100px;
+}
+
+.xmind-sheet-select:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.xmind-sheet-select:focus {
+  border-color: var(--interactive-accent);
+}
+
+/* Hide all mind-elixir built-in toolbars (we build our own) */
+.xmind-mind-wrapper .map-container .mind-elixir-toolbar {
+  display: none !important;
+}
+
+/* Left toolbar */
+.xmind-toolbar-left {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Right-bottom toolbar */
+.xmind-toolbar-rb {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 10;
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+}
+
+/* Shared button style */
+.xmind-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  padding: 0;
+}
+
+.xmind-toolbar-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.xmind-toolbar-btn.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+/* Help panel */
+.xmind-help-panel {
+  position: absolute;
+  left: 52px;
+  top: 12px;
+  z-index: 20;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  min-width: 240px;
+}
+
+.xmind-help-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text-normal);
+}
+
+.xmind-help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.xmind-help-table td {
+  padding: 3px 6px;
+  color: var(--text-muted);
+}
+
+.xmind-help-table td:first-child {
+  white-space: nowrap;
+  color: var(--text-normal);
+}
+
+.xmind-help-table kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: var(--font-monospace);
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+}
+
+/* mind-elixir embed: .map-container inside embed container */
+.xmind-embed-container .map-container {
   width: 100% !important;
   height: 100% !important;
+}
+
+.xmind-embed-container .map-container me-main {
+  width: 100%;
+  height: 100%;
 }

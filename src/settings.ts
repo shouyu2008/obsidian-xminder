@@ -6,14 +6,14 @@ export interface XMindPluginSettings {
   autoSaveDelay: number;
   /** Height of embedded mind map previews in pixels */
   embedHeight: number;
-  /** Default direction for new mind maps: 1=right, 0=left, 2=both */
-  defaultDirection: 0 | 1 | 2;
+  /** Show "Open as XMind" in file context menu (for users with XMind app installed) */
+  showOpenAsXMind: boolean;
 }
 
 export const DEFAULT_SETTINGS: XMindPluginSettings = {
   autoSaveDelay: 500,
   embedHeight: 320,
-  defaultDirection: 2,
+  showOpenAsXMind: true,
 };
 
 export class XMindSettingTab extends PluginSettingTab {
@@ -89,19 +89,18 @@ export class XMindSettingTab extends PluginSettingTab {
       );
 
     // -----------------------------------------------------------------------
-    // Default branch direction
+    // Open as XMind toggle
     // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Default branch direction")
-      .setDesc("Layout direction for new XMind files created from within Obsidian.")
-      .addDropdown((dd) =>
-        dd
-          .addOption("2", "Both sides")
-          .addOption("1", "Right only")
-          .addOption("0", "Left only")
-          .setValue(String(this.plugin.settings.defaultDirection))
+      .setName("Show \"Open as XMind\" menu")
+      .setDesc(
+        "Show an \"Open as XMind\" option in the file context menu, which opens .xmind files with the external XMind application. Enable this if you have the XMind app installed."
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showOpenAsXMind)
           .onChange(async (value) => {
-            this.plugin.settings.defaultDirection = Number(value) as 0 | 1 | 2;
+            this.plugin.settings.showOpenAsXMind = value;
             await this.plugin.saveSettings();
           })
       );

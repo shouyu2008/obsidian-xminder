@@ -1,13 +1,14 @@
 import JSZip from "jszip";
 import type {
   XMindData,
+  XMindMultiSheetData,
   XMindNode,
   XMindContentJsonSheet,
   XMindContentJsonTopic,
 } from "./types";
 
 /**
- * Parse a .xmind file (ArrayBuffer) into internal XMindData format.
+ * Parse a .xmind file (ArrayBuffer) into internal format with all sheets.
  *
  * .xmind files are ZIP archives containing:
  *   - content.json  (XMind 8+, preferred)
@@ -15,7 +16,7 @@ import type {
  *   - metadata.json
  *   - resources/   (images etc.)
  */
-export async function parseXMind(buffer: ArrayBuffer): Promise<XMindData> {
+export async function parseXMind(buffer: ArrayBuffer): Promise<XMindMultiSheetData> {
   const zip = await JSZip.loadAsync(buffer);
 
   // Try content.json first (XMind 8+ / ZEN format)
@@ -41,30 +42,27 @@ export async function parseXMind(buffer: ArrayBuffer): Promise<XMindData> {
 // content.json parser (XMind 8+ / ZEN format)
 // ---------------------------------------------------------------------------
 
-function parseContentJson(raw: string): XMindData {
-  let sheets: XMindContentJsonSheet[];
+function parseContentJson(raw: string): XMindMultiSheetData {
+  let rawSheets: XMindContentJsonSheet[];
 
   try {
     const parsed = JSON.parse(raw);
-    // content.json is an array of sheets
-    sheets = Array.isArray(parsed) ? parsed : [parsed];
+    rawSheets = Array.isArray(parsed) ? parsed : [parsed];
   } catch {
     throw new Error("Failed to parse content.json: invalid JSON.");
   }
 
-  if (sheets.length === 0) {
+  if (rawSheets.length === 0) {
     throw new Error("content.json contains no sheets.");
   }
 
-  // Use the first sheet only (multi-sheet support can be added later)
-  const sheet = sheets[0];
-  const rootTopic = mapJsonTopic(sheet.rootTopic);
-
-  return {
-    rootTopic,
+  const sheets: XMindData[] = rawSheets.map((sheet) => ({
+    rootTopic: mapJsonTopic(sheet.rootTopic),
     title: sheet.title ?? sheet.rootTopic?.title ?? "Mind Map",
     theme: extractThemeName(sheet.theme),
-  };
+  }));
+
+  return { sheets };
 }
 
 function mapJsonTopic(topic: XMindContentJsonTopic): XMindNode {
@@ -136,7 +134,7 @@ function extractThemeName(theme?: Record<string, unknown>): string | undefined {
 // content.xml parser (legacy XMind format)
 // ---------------------------------------------------------------------------
 
-function parseContentXml(raw: string): XMindData {
+function parseContentXml(raw: string): XMindMultiSheetData {
   let doc: Document;
 
   try {
@@ -151,29 +149,40 @@ function parseContentXml(raw: string): XMindData {
     throw new Error(`Invalid content.xml: ${parseError.textContent}`);
   }
 
-  // Find the first sheet/map element
-  const sheetEl =
-    doc.querySelector("xmap-content > sheet") ??
-    doc.querySelector("sheet") ??
-    doc.documentElement;
+  // Find all sheet elements
+  const sheetEls = doc.querySelectorAll("xmap-content > sheet, sheet");
+  const sheets: XMindData[] = [];
 
-  const sheetTitle =
-    sheetEl.getAttribute("title") ??
-    sheetEl.querySelector(":scope > title")?.textContent ??
-    undefined;
-
-  const rootTopicEl =
-    sheetEl.querySelector(":scope > topic") ??
-    sheetEl.querySelector("topic");
-
-  if (!rootTopicEl) {
-    throw new Error("content.xml: no root topic found.");
+  if (sheetEls.length > 0) {
+    sheetEls.forEach((sheetEl) => {
+      const sheetTitle =
+        sheetEl.getAttribute("title") ??
+        sheetEl.querySelector(":scope > title")?.textContent ??
+        undefined;
+      const rootTopicEl =
+        sheetEl.querySelector(":scope > topic") ??
+        sheetEl.querySelector("topic");
+      if (rootTopicEl) {
+        sheets.push({
+          rootTopic: mapXmlTopic(rootTopicEl),
+          title: sheetTitle,
+        });
+      }
+    });
   }
 
-  return {
-    rootTopic: mapXmlTopic(rootTopicEl),
-    title: sheetTitle,
-  };
+  if (sheets.length === 0) {
+    // Fallback: treat entire document as one sheet
+    const rootTopicEl = doc.querySelector("topic");
+    if (!rootTopicEl) {
+      throw new Error("content.xml: no root topic found.");
+    }
+    sheets.push({
+      rootTopic: mapXmlTopic(rootTopicEl),
+    });
+  }
+
+  return { sheets };
 }
 
 function mapXmlTopic(el: Element): XMindNode {

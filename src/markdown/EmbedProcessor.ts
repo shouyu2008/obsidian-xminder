@@ -53,23 +53,28 @@ async function processEmbeds(
     embed.empty();
     embed.addClass("xmind-embed-wrapper");
 
-    const container = embed.createDiv({
-      cls: "xmind-embed-container",
-    });
+    // Use a plain div created via document.createElement so that
+    // mind-elixir's [object HTMLDivElement] check passes reliably.
+    const container = document.createElement("div");
+    container.className = "xmind-embed-container";
 
     // Set height from settings
     const height = plugin.settings.embedHeight ?? 300;
     container.style.height = `${height}px`;
+    embed.appendChild(container);
 
     // Loading indicator
-    const loading = container.createDiv({ cls: "xmind-embed-loading", text: "Loading XMind..." });
+    const loading = document.createElement("div");
+    loading.className = "xmind-embed-loading";
+    loading.textContent = "Loading XMind...";
+    container.appendChild(loading);
 
     try {
       const buffer = await plugin.app.vault.adapter.readBinary(
         normalizePath(resolvedFile.path)
       );
-      const xmindData = await parseXMind(buffer);
-      const meData = xmindDataToMindElixir(xmindData);
+      const multiSheet = await parseXMind(buffer);
+      const meData = xmindDataToMindElixir(multiSheet.sheets[0]);
 
       loading.remove();
 
@@ -88,11 +93,12 @@ async function processEmbeds(
 
       mind.init(meData);
 
-      // Fit to container after render
+      // Fit to container after render — use a longer delay to ensure the
+      // embed container has been laid out and has non-zero dimensions.
       const fitTimer = setTimeout(() => {
         mind.scaleFit();
         mind.toCenter();
-      }, 50);
+      }, 200);
 
       // Clean up mind-elixir instance when the container is removed from DOM
       const observer = new MutationObserver(() => {
@@ -117,12 +123,12 @@ async function processEmbeds(
 
     } catch (err) {
       loading.remove();
-      container.createDiv({
-        cls: "xmind-embed-error",
-        text: `Failed to load "${resolvedFile.name}": ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      });
+      const errorEl = document.createElement("div");
+      errorEl.className = "xmind-embed-error";
+      errorEl.textContent = `Failed to load "${resolvedFile.name}": ${
+        err instanceof Error ? err.message : String(err)
+      }`;
+      container.appendChild(errorEl);
     }
   }
 }

@@ -1,12 +1,12 @@
 import JSZip from "jszip";
-import type { XMindData, XMindNode, XMindContentJsonTopic } from "./types";
+import type { XMindData, XMindMultiSheetData, XMindNode, XMindContentJsonTopic } from "./types";
 
 /**
- * Serialize XMindData back to a .xmind file (ArrayBuffer).
+ * Serialize XMindMultiSheetData back to a .xmind file (ArrayBuffer).
  *
  * Always writes content.json (XMind 8+ format).
  */
-export async function serializeXMind(data: XMindData): Promise<ArrayBuffer> {
+export async function serializeXMind(data: XMindMultiSheetData): Promise<ArrayBuffer> {
   const zip = new JSZip();
 
   const contentJson = buildContentJson(data);
@@ -31,18 +31,16 @@ export async function serializeXMind(data: XMindData): Promise<ArrayBuffer> {
 }
 
 // ---------------------------------------------------------------------------
-// Build content.json array (one sheet)
+// Build content.json array (all sheets)
 // ---------------------------------------------------------------------------
 
-function buildContentJson(data: XMindData): object[] {
-  return [
-    {
-      id: generateId(),
-      class: "sheet",
-      title: data.title ?? "Sheet 1",
-      rootTopic: mapNodeToJsonTopic(data.rootTopic),
-    },
-  ];
+function buildContentJson(data: XMindMultiSheetData): object[] {
+  return data.sheets.map((sheet, i) => ({
+    id: generateId(),
+    class: "sheet",
+    title: sheet.title ?? `Sheet ${i + 1}`,
+    rootTopic: mapNodeToJsonTopic(sheet.rootTopic),
+  }));
 }
 
 function mapNodeToJsonTopic(node: XMindNode): XMindContentJsonTopic {

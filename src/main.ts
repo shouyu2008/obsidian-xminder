@@ -127,12 +127,17 @@ export default class XMindPlugin extends Plugin {
         if (!(abstractFile instanceof TFile)) return;
         if (abstractFile.extension.toLowerCase() !== "xmind") return;
 
-        menu.addItem((item) => {
-          item
-            .setTitle("Open as Mind Map")
-            .setIcon("xmind-icon")
-            .onClick(() => this.openXMindFile(abstractFile));
-        });
+        if (this.settings.showOpenAsXMind) {
+          menu.addItem((item) => {
+            item
+              .setTitle("Open as XMind")
+              .setIcon("xmind-icon")
+              .onClick(() => {
+                // Open with external XMind application
+                (this.app as any).openWithDefaultApp(abstractFile.path);
+              });
+          });
+        }
 
         menu.addItem((item) => {
           item
@@ -177,19 +182,16 @@ export default class XMindPlugin extends Plugin {
     // Reuse existing leaf for this file if open
     const existing = this.app.workspace
       .getLeavesOfType(XMIND_VIEW_TYPE)
-      .find((leaf) => (leaf.view as XMindView).getState?.()?.filePath === file.path);
+      .find((leaf) => (leaf.view as XMindView).file?.path === file.path);
 
     if (existing) {
       this.app.workspace.revealLeaf(existing);
       return;
     }
 
+    // Use getLeaf + openFile so Obsidian calls onLoadFile correctly via FileView
     const leaf = this.app.workspace.getLeaf("tab");
-    await leaf.setViewState({
-      type: XMIND_VIEW_TYPE,
-      active: true,
-      state: { filePath: file.path },
-    });
+    await leaf.openFile(file);
     this.app.workspace.revealLeaf(leaf);
   }
 
@@ -210,22 +212,24 @@ export default class XMindPlugin extends Plugin {
     }
     const path = normalizePath(`${name}.xmind`);
 
-    const emptyData: XMindData = {
-      rootTopic: {
-        id: Math.random().toString(36).slice(2, 10),
-        title: "Central Topic",
-        children: [
-          {
-            id: Math.random().toString(36).slice(2, 10),
-            title: "Main Topic 1",
-          },
-          {
-            id: Math.random().toString(36).slice(2, 10),
-            title: "Main Topic 2",
-          },
-        ],
-      },
-      title: name,
+    const emptyData = {
+      sheets: [{
+        rootTopic: {
+          id: Math.random().toString(36).slice(2, 10),
+          title: "Central Topic",
+          children: [
+            {
+              id: Math.random().toString(36).slice(2, 10),
+              title: "Main Topic 1",
+            },
+            {
+              id: Math.random().toString(36).slice(2, 10),
+              title: "Main Topic 2",
+            },
+          ],
+        },
+        title: name,
+      }],
     };
 
     try {
@@ -259,7 +263,7 @@ export default class XMindPlugin extends Plugin {
     // If the file is already open in a view, use its live data
     const existing = this.app.workspace
       .getLeavesOfType(XMIND_VIEW_TYPE)
-      .find((leaf) => (leaf.view as XMindView).getState?.()?.filePath === file.path);
+      .find((leaf) => (leaf.view as XMindView).file?.path === file.path);
 
     if (existing) {
       const md = (existing.view as XMindView).exportAsMarkdown();
@@ -274,8 +278,11 @@ export default class XMindPlugin extends Plugin {
       const buffer = await this.app.vault.adapter.readBinary(
         normalizePath(file.path)
       );
-      const xmindData = await parseXMind(buffer);
-      const md = xmindNodeToMarkdown(xmindData.rootTopic, 0);
+      const multiSheet = await parseXMind(buffer);
+      const md = multiSheet.sheets.map((sheet, i) => {
+        const prefix = multiSheet.sheets.length > 1 ? `# ${sheet.title || `Sheet ${i + 1}`}\n\n` : "";
+        return prefix + xmindNodeToMarkdown(sheet.rootTopic, 0);
+      }).join("\n\n");
       this.exportMarkdownToClipboard(md);
     } catch (err) {
       new Notice(
