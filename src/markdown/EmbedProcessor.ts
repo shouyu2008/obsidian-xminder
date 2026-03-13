@@ -425,37 +425,10 @@ async function replaceEmbedWithPreview(
       }
     }, 500);
 
-    // Clean up mind-elixir instance when the container is removed from DOM
-    // Watch from document.body to catch all removal events, not just immediate parent
-    const cleanupObserver = new MutationObserver(() => {
-      if (!contentContainer.isConnected) {
-        if (fitTimer !== null) {
-          clearTimeoutFn(fitTimer);
-        }
-        if (resizeObserver) {
-          resizeObserver.disconnect();
-        }
-        mind.destroy?.();
-        cleanupObserver.disconnect();
-        
-        // IMPORTANT: Reset PROCESSED_ATTR on both wrapper and original embed
-        // This allows the embed to be reprocessed when the view is shown again
-        // (e.g., when clicking back from full-screen XMind view)
-        if (wrapper instanceof HTMLElement && wrapper.hasAttribute(PROCESSED_ATTR)) {
-          wrapper.removeAttribute(PROCESSED_ATTR);
-        }
-        if (embed instanceof HTMLElement && embed.hasAttribute(PROCESSED_ATTR)) {
-          embed.removeAttribute(PROCESSED_ATTR);
-        }
-      }
-    });
-    const target = typeof document !== 'undefined' ? document.body : null;
-    if (target) {
-      cleanupObserver.observe(target, {
-        childList: true,
-        subtree: true,
-      });
-    }
+    // Note: We do NOT set up a cleanup observer anymore
+    // The wrapper stays in the DOM and mind-elixir instance is kept alive
+    // This prevents duplicate preview areas when switching views or returning from XMindView
+    // The mind-elixir instance will be garbage collected when the entire page is unloaded
 
     // Click on the preview → open in full XMind view
     contentContainer.addEventListener("click", (e) => {
