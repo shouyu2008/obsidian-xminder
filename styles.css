@@ -73,16 +73,28 @@
 .xmind-embed-container {
   position: relative;
   width: 100%;
-  min-height: 150px;
+  height: 100%;
+  min-height: 300px;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
   overflow: hidden;
   background: var(--background-primary);
   transition: box-shadow 0.15s ease;
+  box-sizing: border-box;
 }
 
 .xmind-embed-container:hover {
   box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.xmind-embed-container .map-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.xmind-embed-container .map-container me-main {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .xmind-embed-container me-main {

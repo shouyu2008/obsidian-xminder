@@ -341,8 +341,12 @@ async function replaceEmbedWithPreview(
   }
   contentContainer.className = "xmind-embed-container";
 
-  const height = plugin.settings.embedHeight ?? 300;
+  // Set proper dimensions for the container
+  const height = plugin.settings.embedHeight ?? 400;
+  contentContainer.style.width = "100%";
   contentContainer.style.height = `${height}px`;
+  contentContainer.style.position = "relative";
+  
   wrapper.appendChild(contentContainer);
 
   const loading = typeof document !== 'undefined' ? document.createElement("div") : null;
@@ -378,6 +382,7 @@ async function replaceEmbedWithPreview(
       toolBar: false,
       keypress: false,
       theme: isDark ? MindElixir.DARK_THEME : MindElixir.THEME,
+      selectionContainer: typeof document !== 'undefined' ? document.body : undefined,
     });
 
     mind.init(meData);
