@@ -296,20 +296,29 @@ async function replaceEmbedWithPreview(
   sourcePath: string,
   plugin: XMindPlugin
 ): Promise<void> {
-  // Check if already processed
+  // Check if already processed and wrapper still exists
   if (embed.hasAttribute(PROCESSED_ATTR)) {
-    // If already processed, check if the wrapper still exists and has content
-    const existingWrapper = embed.nextElementSibling;
-    if (existingWrapper && existingWrapper.classList.contains("xmind-embed-wrapper")) {
-      const contentContainer = existingWrapper.querySelector(".xmind-embed-container");
-      if (contentContainer && contentContainer.querySelector(".map-container")) {
-        // Wrapper and mind-elixir still exist and have content, no need to reprocess
-        return;
+    // Look for the wrapper that should be right after this embed
+    let sibling = embed.nextElementSibling;
+    while (sibling) {
+      if (sibling.classList.contains("xmind-embed-wrapper")) {
+        // Wrapper exists and is still in DOM - check if it has valid content
+        if (sibling.isConnected) {
+          const contentContainer = sibling.querySelector(".xmind-embed-container");
+          if (contentContainer && contentContainer.isConnected) {
+            // Everything is valid, don't reprocess
+            return;
+          }
+        }
+        // Wrapper exists but is disconnected or empty - remove it and reprocess
+        sibling.remove();
+        break;
       }
+      sibling = sibling.nextElementSibling;
     }
-    // If wrapper is missing or empty, clear the flag to allow reprocessing
-    embed.removeAttribute(PROCESSED_ATTR);
   }
+  
+  // Mark as being processed
   embed.setAttribute(PROCESSED_ATTR, "true");
 
   const src = getEmbedSrc(embed);
