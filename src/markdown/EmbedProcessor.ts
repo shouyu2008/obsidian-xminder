@@ -438,11 +438,14 @@ async function replaceEmbedWithPreview(
         mind.destroy?.();
         cleanupObserver.disconnect();
         
-        // IMPORTANT: Remove PROCESSED_ATTR from the parent wrapper when container is removed
-        // This allows the embed to be reprocessed when mode switches back
-        // (e.g., from Source Mode back to Live Preview)
+        // IMPORTANT: Reset PROCESSED_ATTR on both wrapper and original embed
+        // This allows the embed to be reprocessed when the view is shown again
+        // (e.g., when clicking back from full-screen XMind view)
         if (wrapper instanceof HTMLElement && wrapper.hasAttribute(PROCESSED_ATTR)) {
           wrapper.removeAttribute(PROCESSED_ATTR);
+        }
+        if (embed instanceof HTMLElement && embed.hasAttribute(PROCESSED_ATTR)) {
+          embed.removeAttribute(PROCESSED_ATTR);
         }
       }
     });
