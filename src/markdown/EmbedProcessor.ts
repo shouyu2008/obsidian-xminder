@@ -387,22 +387,54 @@ async function replaceEmbedWithPreview(
 
     mind.init(meData);
 
-    // Fit to container after render — use a longer delay to ensure the
-    // embed container has been laid out and has non-zero dimensions.
+    // Fit to container after render — use longer delay to ensure the
+    // embed container has been properly laid out with correct dimensions
     const setTimeoutFn = typeof setTimeout !== 'undefined' ? setTimeout : (fn: () => void, ms: number) => { fn(); return 1; };
     const clearTimeoutFn = typeof clearTimeout !== 'undefined' ? clearTimeout : (_id: number) => {};
-    const fitTimer = setTimeoutFn(() => {
-      if (contentContainer.isConnected) {
+    
+    let fitTimer: number | null = null;
+    let hasCalledFit = false;
+    
+    const performFit = () => {
+      if (contentContainer.isConnected && !hasCalledFit) {
+        hasCalledFit = true;
         mind.scaleFit();
         mind.toCenter();
       }
-    }, 300);
+    };
+    
+    // Use ResizeObserver to detect when container is actually rendered with dimensions
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+            performFit();
+            if (resizeObserver) resizeObserver.disconnect();
+          }
+        }
+      });
+      resizeObserver.observe(contentContainer);
+    }
+    
+    // Fallback: also use timeout in case ResizeObserver doesn't work
+    fitTimer = setTimeoutFn(() => {
+      performFit();
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    }, 500);
 
     // Clean up mind-elixir instance when the container is removed from DOM
     // Watch from document.body to catch all removal events, not just immediate parent
     const cleanupObserver = new MutationObserver(() => {
       if (!contentContainer.isConnected) {
-        clearTimeoutFn(fitTimer);
+        if (fitTimer !== null) {
+          clearTimeoutFn(fitTimer);
+        }
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
         mind.destroy?.();
         cleanupObserver.disconnect();
         
