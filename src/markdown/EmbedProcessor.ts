@@ -47,28 +47,16 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
 /**
  * Check if an element is inside a markdown content area that is SAFE to modify.
  * 
- * CRITICAL: We should NOT modify elements in Live Preview (cm-editor) because
- * DOM modifications in Live Preview are synced back to the markdown source,
- * which corrupts the source code.
- * 
- * Only safe to modify in:
- * - Reading View (markdown-reading-view): read-only, safe to modify DOM
- * - NOT in Live Preview: modifications corrupt the source
+ * Returns an object indicating where the element is and how safe it is to modify.
  */
-function isInMarkdownContent(el: HTMLElement): boolean {
-  // ONLY process Reading View - it's read-only and safe to modify
-  if (el.closest(".markdown-reading-view")) {
-    return true;
-  }
+function checkMarkdownContentContext(el: HTMLElement): { inReadingView: boolean; inLivePreview: boolean } {
+  // Check if in Reading View (read-only, safe to modify)
+  const inReadingView = !!el.closest(".markdown-reading-view");
+  
+  // Check if in Live Preview (connected to source, modifications risk corruption)
+  const inLivePreview = !!el.closest(".cm-editor");
 
-  // CRITICAL: DO NOT process Live Preview (cm-editor)
-  // Modifying DOM here corrupts the markdown source!
-  if (el.closest(".cm-editor")) {
-    return false;
-  }
-
-  // Don't process other markdown views either
-  return false;
+  return { inReadingView, inLivePreview };
 }
 
 /**
@@ -100,7 +88,8 @@ function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
 
       // CRITICAL: Only process if in markdown content area
       // This prevents processing UI elements like file picker menus
-      if (!isInMarkdownContent(element)) {
+      const context = checkMarkdownContentContext(element);
+      if (!context.inReadingView && !context.inLivePreview) {
         processingQueue.delete(element);
         continue;
       }
@@ -120,8 +109,9 @@ function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
       for (const node of Array.from(mutation.addedNodes)) {
         if (!(node instanceof HTMLElement)) continue;
 
-        // Only check nodes that are in markdown content areas
-        if (!isInMarkdownContent(node)) {
+        // Check if node is in markdown content
+        const context = checkMarkdownContentContext(node);
+        if (!context.inReadingView && !context.inLivePreview) {
           continue;
         }
 
@@ -134,8 +124,8 @@ function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
         // Also recursively check children that are in markdown content
         const allNodes = node.querySelectorAll<HTMLElement>("*");
         for (const child of Array.from(allNodes)) {
-          // Double-check child is in markdown content
-          if (!isInMarkdownContent(child)) {
+          const childContext = checkMarkdownContentContext(child);
+          if (!childContext.inReadingView && !childContext.inLivePreview) {
             continue;
           }
           const childSrc = getEmbedSrc(child);
@@ -166,8 +156,8 @@ function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
   plugin.app.workspace.onLayoutReady(() => {
     const allElements = document.querySelectorAll<HTMLElement>("*");
     for (const el of Array.from(allElements)) {
-      // Only process markdown content
-      if (!isInMarkdownContent(el)) {
+      const context = checkMarkdownContentContext(el);
+      if (!context.inReadingView && !context.inLivePreview) {
         continue;
       }
       const src = getEmbedSrc(el);
@@ -411,14 +401,32 @@ async function replaceEmbedWithPreview(
 
   if (!(resolvedFile instanceof TFile)) return;
 
-  // Clear the embed completely first, removing any old containers or loading states
-  embed.empty();
+  // Determine the context to decide how to handle the embed
+  const context = checkMarkdownContentContext(embed);
 
-  // Also ensure no stale loading messages are left
-  const oldContainers = embed.querySelectorAll(".xmind-embed-container, .xmind-embed-loading");
-  for (const oldContainer of Array.from(oldContainers)) {
-    oldContainer.remove();
+  // CRITICAL: In Live Preview, do NOT call embed.empty() because it corrupts the source!
+  // Only safe to do this in Reading View (read-only)
+  if (context.inReadingView) {
+    // Reading View: safe to completely replace content
+    embed.empty();
+    
+    // Also ensure no stale loading messages are left
+    const oldContainers = embed.querySelectorAll(".xmind-embed-container, .xmind-embed-loading");
+    for (const oldContainer of Array.from(oldContainers)) {
+      oldContainer.remove();
+    }
+  } else if (context.inLivePreview) {
+    // Live Preview: only remove old containers, don't clear everything
+    const existingContainer = embed.querySelector(".xmind-embed-container");
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+    const existingLoading = embed.querySelector(".xmind-embed-loading");
+    if (existingLoading) {
+      existingLoading.remove();
+    }
   }
+
   embed.addClass("xmind-embed-wrapper");
   // Remove the generic file-embed styling so our container can fill it
   embed.removeClass("file-embed");
