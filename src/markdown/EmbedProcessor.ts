@@ -45,8 +45,35 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Aggressive mutation observer that catches ALL xmind embeds
- * including ones in Reading View, Live Preview, and any other context.
+ * Check if an element is inside a markdown content area (not a menu/UI element)
+ */
+function isInMarkdownContent(el: HTMLElement): boolean {
+  // Check if it's inside a markdown-reading-view (Reading View)
+  if (el.closest(".markdown-reading-view")) {
+    return true;
+  }
+
+  // Check if it's inside cm-editor (Live Preview editor)
+  if (el.closest(".cm-editor")) {
+    return true;
+  }
+
+  // Check if it's inside a workspace view content
+  if (el.closest(".view-content")) {
+    return true;
+  }
+
+  // Check if it's inside markdown-source-view
+  if (el.closest(".markdown-source-view")) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Aggressive mutation observer that catches xmind embeds in markdown content areas.
+ * Only processes embeds within markdown views, not UI menus/dropdowns.
  */
 function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
   let processingQueue: Set<HTMLElement> = new Set();
@@ -71,6 +98,13 @@ function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
         continue;
       }
 
+      // CRITICAL: Only process if in markdown content area
+      // This prevents processing UI elements like file picker menus
+      if (!isInMarkdownContent(element)) {
+        processingQueue.delete(element);
+        continue;
+      }
+
       // Get the source path
       const sourcePath = findSourcePath(element, plugin);
 
@@ -86,15 +120,24 @@ function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
       for (const node of Array.from(mutation.addedNodes)) {
         if (!(node instanceof HTMLElement)) continue;
 
+        // Only check nodes that are in markdown content areas
+        if (!isInMarkdownContent(node)) {
+          continue;
+        }
+
         // Check if node itself is an embed
         const src = getEmbedSrc(node);
         if (src.toLowerCase().endsWith(".xmind") && !node.hasAttribute(PROCESSED_ATTR)) {
           processingQueue.add(node);
         }
 
-        // Also recursively check all children for xmind references
+        // Also recursively check children that are in markdown content
         const allNodes = node.querySelectorAll<HTMLElement>("*");
         for (const child of Array.from(allNodes)) {
+          // Double-check child is in markdown content
+          if (!isInMarkdownContent(child)) {
+            continue;
+          }
           const childSrc = getEmbedSrc(child);
           if (childSrc.toLowerCase().endsWith(".xmind") && !child.hasAttribute(PROCESSED_ATTR)) {
             processingQueue.add(child);
@@ -123,6 +166,10 @@ function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
   plugin.app.workspace.onLayoutReady(() => {
     const allElements = document.querySelectorAll<HTMLElement>("*");
     for (const el of Array.from(allElements)) {
+      // Only process markdown content
+      if (!isInMarkdownContent(el)) {
+        continue;
+      }
       const src = getEmbedSrc(el);
       if (src.toLowerCase().endsWith(".xmind") && !el.hasAttribute(PROCESSED_ATTR)) {
         processingQueue.add(el);
@@ -364,15 +411,14 @@ async function replaceEmbedWithPreview(
 
   if (!(resolvedFile instanceof TFile)) return;
 
-  // Skip if this embed already has been processed and has a container
-  const existingMindEl = embed.querySelector(".xmind-embed-container");
-  if (existingMindEl instanceof HTMLElement) {
-    // Already processed and container exists, nothing to do
-    return;
-  }
-
-  // Clear the default content (icon + filename) and replace with our preview
+  // Clear the embed completely first, removing any old containers or loading states
   embed.empty();
+
+  // Also ensure no stale loading messages are left
+  const oldContainers = embed.querySelectorAll(".xmind-embed-container, .xmind-embed-loading");
+  for (const oldContainer of Array.from(oldContainers)) {
+    oldContainer.remove();
+  }
   embed.addClass("xmind-embed-wrapper");
   // Remove the generic file-embed styling so our container can fill it
   embed.removeClass("file-embed");
