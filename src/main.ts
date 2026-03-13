@@ -158,6 +158,11 @@ export default class XMindPlugin extends Plugin {
   }
 
   onunload(): void {
+    // Close all open XMind views to ensure proper cleanup
+    const leaves = this.app.workspace.getLeavesOfType(XMIND_VIEW_TYPE);
+    for (const leaf of leaves) {
+      leaf.detach();
+    }
   }
 
   // ---------------------------------------------------------------------------
