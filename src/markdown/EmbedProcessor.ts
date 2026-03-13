@@ -11,21 +11,18 @@ const PROCESSED_ATTR = "data-xmind-processed";
 /**
  * Registers embed handling for ![[file.xmind]] and link handling for [[file.xmind]].
  *
- * Three complementary mechanisms are used:
+ * Since .xmind is an unknown file type, Obsidian doesn't create standard
+ * .internal-embed or .file-embed elements. Instead, it renders embeds as
+ * links or inline elements. We use multiple strategies to detect and process them:
  *
- * 1. **registerMarkdownPostProcessor** — Obsidian invokes this for every
- *    rendered chunk in both Reading View and Live Preview. It works well when
- *    Obsidian creates `<span class="internal-embed" src="…">` elements.
+ * 1. **MarkdownPostProcessor** — Scans rendered markdown for link patterns and
+ *    replaces xmind embeds with previews.
  *
- * 2. **MutationObserver on the workspace** — For custom / unknown file types
- *    Obsidian often renders `![[file.xmind]]` as a generic "file-embed" widget
- *    (icon + filename) that may *not* go through the post-processor pipeline,
- *    especially in Live Preview (CM6). The observer watches for these elements
- *    appearing in the DOM and replaces them with our mind-map preview.
+ * 2. **MutationObserver** — Watches for new elements appearing in the DOM and
+ *    replaces xmind embeds wherever they appear.
  *
- * 3. **Workspace leaf event handler** — For Reading View, we listen to the
- *    "changed" event on markdown leaves to ensure xmind embeds are processed
- *    even when the view is initially rendered.
+ * 3. **Periodic scanning** — Periodically scans all markdown views for unprocessed
+ *    xmind embeds, especially important for Reading View which renders upfront.
  */
 export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // --- Mechanism 1: MarkdownPostProcessor ---
@@ -36,11 +33,11 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
     }
   );
 
-  // --- Mechanism 2: MutationObserver (fallback for Live Preview) ---
+  // --- Mechanism 2: MutationObserver (for Live Preview) ---
   startEmbedObserver(plugin);
 
-  // --- Mechanism 3: Listen for Reading View changes ---
-  startReadingViewObserver(plugin);
+  // --- Mechanism 3: Periodic scanner for Reading View ---
+  startPeriodicEmbedScanner(plugin);
 }
 
 // ---------------------------------------------------------------------------
@@ -92,75 +89,197 @@ function startEmbedObserver(plugin: XMindPlugin): void {
 }
 
 /**
- * Scans existing Reading View leaves for xmind embeds that may have been
- * missed during initial plugin load. Reading View renders content directly
- * to HTML without triggering the post-processor on view switch.
+ * Periodic scanner to find and process xmind embeds that may have been missed.
+ * This is essential for Reading View which renders all content upfront without
+ * triggering processors for embed syntax.
+ *
+ * The scanner looks for:
+ * 1. Unprocessed span/div elements containing .xmind links
+ * 2. Elements inside markdown views that reference .xmind files
+ * 3. Links to .xmind files that should be embedded
  */
-function startReadingViewObserver(plugin: XMindPlugin): void {
-  // Function to scan a specific leaf's view content
-  const scanLeafForEmbeds = (leaf: any) => {
-    if (!leaf || !leaf.view) return;
-    
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const viewContent = leaf.view.containerEl?.querySelector?.(".markdown-reading-view");
-    if (viewContent instanceof HTMLElement) {
-      const file = (leaf.view as { file?: TFile }).file;
-      if (file) {
-        void processEmbedsInElement(viewContent, file.path, plugin);
+function startPeriodicEmbedScanner(plugin: XMindPlugin): void {
+  // Keep track of last scan to avoid redundant processing
+  let lastScanTime = 0;
+  const SCAN_INTERVAL = 1000; // Scan every 1 second
+
+  // Scan all markdown leaves for unprocessed xmind embeds
+  const scanMarkdownLeaves = () => {
+    const now = Date.now();
+    if (now - lastScanTime < SCAN_INTERVAL) return;
+    lastScanTime = now;
+
+    for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const file = (leaf.view as any)?.file as TFile | undefined;
+      if (!file) continue;
+
+      // For Reading View: scan the rendered markdown content
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const readingView = leaf.view.containerEl?.querySelector?.(".markdown-reading-view");
+      if (readingView instanceof HTMLElement) {
+        scanElementForXMindEmbeds(readingView, file.path, plugin);
+      }
+
+      // For Live Preview: scan the editor content
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const livePreview = leaf.view.containerEl?.querySelector?.(".cm-editor");
+      if (livePreview instanceof HTMLElement) {
+        scanElementForXMindEmbeds(livePreview, file.path, plugin);
       }
     }
   };
 
-  // Scan all existing markdown leaves
-  const scanExistingLeaves = () => {
-    for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) {
-      scanLeafForEmbeds(leaf);
-    }
-  };
-
-  // Initial scan when plugin loads
+  // Scan when workspace layout is ready
   plugin.app.workspace.onLayoutReady(() => {
-    scanExistingLeaves();
+    scanMarkdownLeaves();
   });
 
-  // Listen for changes to markdown leaves (when view is opened/switched)
+  // Scan periodically
+  const scanInterval = setInterval(scanMarkdownLeaves, SCAN_INTERVAL);
+  plugin.register(() => clearInterval(scanInterval));
+
+  // Scan on leaf change
   plugin.registerEvent(
     plugin.app.workspace.on("active-leaf-change", () => {
-      scanExistingLeaves();
+      scanMarkdownLeaves();
     })
   );
 
-  // Also listen for file open events
+  // Scan on file open
   plugin.registerEvent(
     plugin.app.workspace.on("file-open", () => {
-      scanExistingLeaves();
+      scanMarkdownLeaves();
     })
   );
 }
 
-/** Check if an element is an xmind embed that we should process */
+/**
+ * Scans an element tree for elements that reference .xmind files and
+ * processes them as embeds if they haven't been already.
+ */
+function scanElementForXMindEmbeds(
+  el: HTMLElement,
+  sourcePath: string,
+  plugin: XMindPlugin
+): void {
+  // Find all elements that might be xmind embeds or links
+  // Look for: links to .xmind files, inline embeds, or wrapper divs
+  const candidates: HTMLElement[] = [];
+
+  // Strategy 1: Find anchor tags pointing to .xmind files
+  const links = el.querySelectorAll<HTMLAnchorElement>("a[href*='.xmind']");
+  for (const link of Array.from(links)) {
+    // Check if this link represents an embed (has specific styling or structure)
+    const parent = link.parentElement;
+    if (parent && parent.classList.contains("embed-title")) {
+      // This is an embed container
+      const container = parent.closest(".embed-container") ?? parent.parentElement;
+      if (container instanceof HTMLElement && !container.hasAttribute(PROCESSED_ATTR)) {
+        candidates.push(container);
+      }
+    }
+  }
+
+  // Strategy 2: Look for elements with data attributes or title that mention .xmind
+  const allElements = el.querySelectorAll<HTMLElement>("[data-src*='.xmind'], [title*='.xmind']");
+  for (const elem of Array.from(allElements)) {
+    if (!elem.hasAttribute(PROCESSED_ATTR)) {
+      candidates.push(elem);
+    }
+  }
+
+  // Strategy 3: Look for inline-embed or file-embed class elements (fallback)
+  const embeds = el.querySelectorAll<HTMLElement>(".internal-embed, .file-embed, .embed-container");
+  for (const embed of Array.from(embeds)) {
+    const src = getEmbedSrc(embed);
+    if (src.toLowerCase().endsWith(".xmind") && !embed.hasAttribute(PROCESSED_ATTR)) {
+      candidates.push(embed);
+    }
+  }
+
+  // Process unique candidates
+  const processed = new Set<HTMLElement>();
+  for (const candidate of candidates) {
+    if (!processed.has(candidate)) {
+      processed.add(candidate);
+      void replaceEmbedWithPreview(candidate, sourcePath, plugin);
+    }
+  }
+}
+
+/**
+ * Check if an element is an xmind embed that we should process.
+ * Supports multiple element types since unknown files render differently.
+ */
 function isXMindEmbed(el: HTMLElement): boolean {
   if (el.hasAttribute(PROCESSED_ATTR)) return false;
-  if (
-    !el.classList.contains("internal-embed") &&
-    !el.classList.contains("file-embed")
-  )
-    return false;
 
-  const src = getEmbedSrc(el);
-  return src.toLowerCase().endsWith(".xmind");
+  // Check for standard embed classes
+  if (el.classList.contains("internal-embed") ||
+      el.classList.contains("file-embed") ||
+      el.classList.contains("embed-container")) {
+    const src = getEmbedSrc(el);
+    return src.toLowerCase().endsWith(".xmind");
+  }
+
+  // Also check anchor tags that might be embeds
+  if (el.tagName === "A") {
+    const src = el.getAttribute("href") ?? "";
+    if (src.toLowerCase().endsWith(".xmind")) {
+      // Only consider it if it's styled as an embed
+      const parent = el.parentElement;
+      if (parent && (
+        parent.classList.contains("embed-title") ||
+        parent.classList.contains("embed-container") ||
+        parent.classList.contains("internal-embed")
+      )) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
-/** Extract file reference from an embed element */
+/**
+ * Extract file reference from an embed element.
+ * Tries multiple sources since unknown file types may render differently.
+ */
 function getEmbedSrc(el: HTMLElement): string {
-  // Obsidian stores the reference in "src", sometimes also in "alt"
-  return el.getAttribute("src") ?? el.getAttribute("alt") ?? "";
+  // Try various attributes where the file reference might be stored
+  let src = el.getAttribute("src") ?? 
+            el.getAttribute("alt") ?? 
+            el.getAttribute("data-src") ?? 
+            el.getAttribute("href") ??
+            "";
+
+  // If still not found, look in child elements
+  if (!src) {
+    const link = el.querySelector<HTMLAnchorElement>("a[href*='.xmind']");
+    if (link) {
+      src = link.getAttribute("href") ?? "";
+    }
+  }
+
+  // If still not found, check the text content for filename patterns
+  if (!src) {
+    const text = el.textContent ?? "";
+    const match = text.match(/([^\s/]+\.xmind)/i);
+    if (match) {
+      src = match[1];
+    }
+  }
+
+  return src;
 }
 
-/** Try to determine the source markdown file path from the DOM context */
+/**
+ * Try to determine the source markdown file path from the DOM context or workspace.
+ * Uses multiple strategies to find the file path.
+ */
 function findSourcePath(el: HTMLElement, plugin: XMindPlugin): string {
-  // Walk up to find a .markdown-reading-view or .markdown-source-view
-  // that has a data-path or is associated with a known leaf
+  // Strategy 1: Look for data-path attribute (most reliable)
   let current: HTMLElement | null = el;
   while (current) {
     const path = current.getAttribute("data-path");
@@ -182,6 +301,23 @@ function findSourcePath(el: HTMLElement, plugin: XMindPlugin): string {
 
     current = current.parentElement;
   }
+
+  // Strategy 2: Check active leaf (fallback)
+  const activeLeaf = plugin.app.workspace.activeLeaf;
+  if (activeLeaf) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const file = (activeLeaf.view as any)?.file as TFile | undefined;
+    if (file) return file.path;
+  }
+
+  // Strategy 3: Find any markdown leaf that contains the element
+  for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) {
+    if (leaf.view.containerEl.contains(el)) {
+      const file = (leaf.view as { file?: TFile }).file;
+      if (file) return file.path;
+    }
+  }
+
   return "";
 }
 
@@ -191,19 +327,17 @@ function findSourcePath(el: HTMLElement, plugin: XMindPlugin): string {
 
 /**
  * Scan an element for xmind embeds and replace them with mind-map previews.
- * Used by both the MarkdownPostProcessor and the MutationObserver.
+ * Since .xmind is an unknown type, embeds may be rendered as links or generic containers.
+ * This function tries multiple detection strategies.
  */
 async function processEmbedsInElement(
   el: HTMLElement,
   sourcePath: string,
   plugin: XMindPlugin
 ): Promise<void> {
-  // Broad selector to catch all embed variants:
-  //   span.internal-embed  — standard embed (images, known types)
-  //   div.internal-embed   — file embed for custom/unknown types
-  //   .file-embed          — generic file embed wrapper
+  // Strategy 1: Look for standard embed elements
   const embeds = el.querySelectorAll<HTMLElement>(
-    ".internal-embed, .file-embed"
+    ".internal-embed, .file-embed, .embed-container"
   );
 
   for (const embed of Array.from(embeds)) {
@@ -213,6 +347,27 @@ async function processEmbedsInElement(
     if (!src.toLowerCase().endsWith(".xmind")) continue;
 
     await replaceEmbedWithPreview(embed, sourcePath, plugin);
+  }
+
+  // Strategy 2: Look for links that might represent embeds
+  // In some cases, embed syntax ![[file.xmind]] gets rendered as a link
+  const links = el.querySelectorAll<HTMLAnchorElement>("a[href*='.xmind']");
+  for (const link of Array.from(links)) {
+    if (link.hasAttribute(PROCESSED_ATTR)) continue;
+    
+    // Only process if it looks like an embed link (not a regular link)
+    // Check if it has embed-like styling or is wrapped in an embed container
+    const parent = link.parentElement;
+    if (parent && (
+      parent.classList.contains("embed-title") ||
+      parent.classList.contains("embed-container") ||
+      parent.classList.contains("internal-embed")
+    )) {
+      const container = parent.closest(".embed-container") ?? parent.parentElement;
+      if (container instanceof HTMLElement) {
+        await replaceEmbedWithPreview(container, sourcePath, plugin);
+      }
+    }
   }
 }
 
