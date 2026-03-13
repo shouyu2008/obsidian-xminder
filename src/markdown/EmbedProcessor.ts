@@ -296,8 +296,20 @@ async function replaceEmbedWithPreview(
   sourcePath: string,
   plugin: XMindPlugin
 ): Promise<void> {
-  // Guard: already processed
-  if (embed.hasAttribute(PROCESSED_ATTR)) return;
+  // Check if already processed
+  if (embed.hasAttribute(PROCESSED_ATTR)) {
+    // If already processed, check if the wrapper still exists and has content
+    const existingWrapper = embed.nextElementSibling;
+    if (existingWrapper && existingWrapper.classList.contains("xmind-embed-wrapper")) {
+      const contentContainer = existingWrapper.querySelector(".xmind-embed-container");
+      if (contentContainer && contentContainer.querySelector(".map-container")) {
+        // Wrapper and mind-elixir still exist and have content, no need to reprocess
+        return;
+      }
+    }
+    // If wrapper is missing or empty, clear the flag to allow reprocessing
+    embed.removeAttribute(PROCESSED_ATTR);
+  }
   embed.setAttribute(PROCESSED_ATTR, "true");
 
   const src = getEmbedSrc(embed);
@@ -425,10 +437,29 @@ async function replaceEmbedWithPreview(
       }
     }, 500);
 
-    // Note: We do NOT set up a cleanup observer anymore
-    // The wrapper stays in the DOM and mind-elixir instance is kept alive
-    // This prevents duplicate preview areas when switching views or returning from XMindView
-    // The mind-elixir instance will be garbage collected when the entire page is unloaded
+    // Clean up mind-elixir instance when the container is removed from DOM
+    // This is critical to prevent memory leaks and broken references
+    let isDestroyed = false;
+    const cleanupObserver = new MutationObserver(() => {
+      if (!contentContainer.isConnected && !isDestroyed) {
+        isDestroyed = true;
+        if (fitTimer !== null) {
+          clearTimeoutFn(fitTimer);
+        }
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
+        mind.destroy?.();
+        cleanupObserver.disconnect();
+      }
+    });
+    const target = typeof document !== 'undefined' ? document.body : null;
+    if (target) {
+      cleanupObserver.observe(target, {
+        childList: true,
+        subtree: true,
+      });
+    }
 
     // Click on the preview → open in full XMind view
     contentContainer.addEventListener("click", (e) => {
