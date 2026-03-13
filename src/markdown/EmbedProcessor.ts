@@ -115,16 +115,17 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
             if (sibling.classList.contains("xmind-embed-wrapper")) {
               const mapContainer = sibling.querySelector(".map-container");
               if (!mapContainer) {
-                console.log("[XMinder] Periodic check found broken embed, clearing flag to reprocess");
-                embed.removeAttribute(PROCESSED_ATTR);
-                // Trigger reprocessing by calling replaceEmbedWithPreview directly
-                let sourcePath = "";
-                const activeLeaf = plugin.app.workspace.activeLeaf;
-                if (activeLeaf) {
-                  const file = (activeLeaf.view as { file?: TFile }).file;
-                  if (file) sourcePath = file.path;
+                // Wrapper exists but mind-elixir is broken (no map-container)
+                // Simply remove the wrapper and clear the flag to allow reprocessing
+                // But do it carefully to avoid race conditions with MutationObserver
+                console.log("[XMinder] Periodic check found broken embed");
+                
+                // Remove just the wrapper content but keep the wrapper element
+                // This triggers a lighter reprocess rather than full rebuild
+                const contentContainer = sibling.querySelector(".xmind-embed-container");
+                if (contentContainer) {
+                  contentContainer.innerHTML = "";
                 }
-                void replaceEmbedWithPreview(embed, sourcePath, plugin);
               }
               break;
             }
@@ -342,41 +343,35 @@ async function replaceEmbedWithPreview(
   
   // Check if already processed and wrapper still exists
   if (embed.hasAttribute(PROCESSED_ATTR)) {
-    console.log("[XMinder] Checking for existing wrapper...");
+    console.log("[XMinder] PROCESSED_ATTR already set, checking wrapper validity...");
     // Look for the wrapper that should be right after this embed
     let sibling = embed.nextElementSibling;
-    let foundWrapper = false;
     while (sibling) {
       if (sibling.classList.contains("xmind-embed-wrapper")) {
-        foundWrapper = true;
-        console.log("[XMinder] Found existing wrapper");
-        console.log("[XMinder]   - isConnected:", (sibling as any).isConnected);
-        console.log("[XMinder]   - HTML:", (sibling as HTMLElement).innerHTML.substring(0, 100));
+        const contentContainer = sibling.querySelector(".xmind-embed-container");
+        const mapContainer = contentContainer?.querySelector(".map-container");
         
-        // Wrapper exists and is still in DOM - check if it has valid content
-        if ((sibling as any).isConnected) {
-          const contentContainer = sibling.querySelector(".xmind-embed-container");
-          const mapContainer = contentContainer?.querySelector(".map-container");
-          console.log("[XMinder]   - contentContainer exists:", !!contentContainer);
-          console.log("[XMinder]   - contentContainer.isConnected:", (contentContainer as any)?.isConnected);
-          console.log("[XMinder]   - mapContainer exists:", !!mapContainer);
-          
-          if (contentContainer && (contentContainer as any).isConnected && mapContainer) {
-            // Everything is valid, don't reprocess
-            console.log("[XMinder] Wrapper is valid, skipping reprocess");
-            return;
-          }
+        console.log("[XMinder]   - mapContainer exists:", !!mapContainer);
+        
+        if (mapContainer && (mapContainer as any).isConnected) {
+          // Everything is valid, don't reprocess
+          console.log("[XMinder] Wrapper and mind-elixir are valid, skipping");
+          return;
+        } else if (contentContainer) {
+          // Wrapper exists but mind-elixir is broken
+          // Clear the container and allow reprocessing by NOT returning
+          console.log("[XMinder] Mind-elixir is broken, clearing container for reprocess");
+          contentContainer.innerHTML = "";
+          // Continue to reprocess instead of returning
+          break;
+        } else {
+          // No content container, remove wrapper and reprocess
+          console.log("[XMinder] No content container, removing wrapper");
+          sibling.remove();
+          break;
         }
-        // Wrapper exists but is disconnected or empty - remove it and reprocess
-        console.log("[XMinder] Wrapper is invalid, removing and reprocessing");
-        sibling.remove();
-        break;
       }
       sibling = sibling.nextElementSibling;
-    }
-    if (!foundWrapper) {
-      console.log("[XMinder] No wrapper found despite PROCESSED_ATTR, will reprocess");
-      embed.removeAttribute(PROCESSED_ATTR);
     }
   }
   
