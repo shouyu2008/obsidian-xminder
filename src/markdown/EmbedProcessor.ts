@@ -30,10 +30,68 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // Live Preview (CodeMirror) does not trigger MarkdownPostProcessor
   plugin.registerMarkdownPostProcessor(
     async (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+      // Only process in Reading View to avoid any modifications in Live Preview
+      const isReadingView = el.closest(".markdown-reading-view");
+      if (!isReadingView) {
+        return;
+      }
+      
       void processEmbedsInElement(el, ctx.sourcePath, plugin);
       processLinks(el, plugin);
     }
   );
+
+  // --- Mechanism 2: MutationObserver for Reading View ---
+  // Sometimes MarkdownPostProcessor doesn't get called (e.g., when switching views)
+  // We use MutationObserver to catch .internal-embed elements in Reading View
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of Array.from(mutation.addedNodes)) {
+        if (!(node instanceof HTMLElement)) continue;
+
+        // Only process if this is inside a Reading View
+        const inReadingView = node.closest(".markdown-reading-view");
+        if (!inReadingView) continue;
+
+        // Check for .internal-embed elements
+        const embeds: HTMLElement[] = [];
+        if (node.classList.contains("internal-embed")) {
+          embeds.push(node);
+        }
+        const childEmbeds = node.querySelectorAll<HTMLElement>(".internal-embed");
+        for (const embed of Array.from(childEmbeds)) {
+          embeds.push(embed);
+        }
+
+        // Process each embed
+        for (const embed of embeds) {
+          if (embed.hasAttribute(PROCESSED_ATTR)) continue;
+          
+          const src = getEmbedSrc(embed);
+          if (!src.toLowerCase().endsWith(".xmind")) continue;
+
+          // Find source path from active view
+          let sourcePath = "";
+          const activeLeaf = plugin.app.workspace.activeLeaf;
+          if (activeLeaf) {
+            const file = (activeLeaf.view as { file?: TFile }).file;
+            if (file) sourcePath = file.path;
+          }
+
+          void replaceEmbedWithPreview(embed, sourcePath, plugin);
+        }
+      }
+    }
+  });
+
+  // Watch for DOM changes in the workspace
+  const bodyTarget = typeof document !== 'undefined' ? document.body : null;
+  if (bodyTarget) {
+    observer.observe(bodyTarget, {
+      childList: true,
+      subtree: true,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -253,27 +311,10 @@ async function replaceEmbedWithPreview(
 
   if (!(resolvedFile instanceof TFile)) return;
 
-  // Check if we're in Reading View - look for the container that has this specific class structure
-  const isReadingView = embed.closest(".markdown-reading-view");
-  
-  // Also check for alternative Reading View selectors
-  const isReadingViewAlt = embed.closest(".markdown-preview-view");
-  
-  // Debug: print complete parent chain to find where .markdown-reading-view actually is
-  let current: HTMLElement | null = embed;
-  let depth = 0;
-  const classChain: string[] = [];
-  while (current && depth < 30) {
-    const classes = current.className.substring(0, 80);
-    classChain.push(`${current.tagName}(${classes})`);
-    current = current.parentElement;
-    depth++;
-  }
-
-  // Only process in Reading View to avoid corrupting source code in Live Preview
-  // Accept either .markdown-reading-view or .markdown-preview-view
-  const shouldProcess = isReadingView || isReadingViewAlt;
-  if (!shouldProcess) {
+  // Note: We should only be called from Reading View context (guaranteed by registerEmbedProcessor)
+  // But as a safety check, verify we're not in an editable context
+  const isEditableContext = embed.closest(".cm-editor") || embed.closest(".CodeMirror");
+  if (isEditableContext) {
     return;
   }
 
