@@ -1115,8 +1115,9 @@ export class XMindView extends FileView {
 
   /**
    * Patch to fix the node editing display issue
-   * When editing a node, the original text span should be hidden to prevent
+   * When editing a node, the original text span content should be cleared to prevent
    * showing "new node" alongside the input box, especially on deep nodes (level 3+)
+   * We use textContent = "" instead of display: none to preserve layout calculations
    */
   private patchNodeEditingDisplay(): void {
     if (!this.mind || !this.contentEl) return;
@@ -1124,8 +1125,8 @@ export class XMindView extends FileView {
     const mapCanvas = this.contentEl.querySelector(".map-canvas");
     if (!(mapCanvas instanceof HTMLElement)) return;
 
-    // Track which text spans are currently hidden due to editing
-    const hiddenTextSpans = new WeakMap<HTMLElement, HTMLElement>();
+    // Track which text spans we've cleared and their original content
+    const textSpanContents = new WeakMap<HTMLElement, string>();
 
     // Use MutationObserver to detect when an input-box is added or removed
     const observer = new MutationObserver((mutations) => {
@@ -1137,15 +1138,16 @@ export class XMindView extends FileView {
           // Check for added input-box elements
           for (const node of addedNodes) {
             if (node instanceof HTMLElement && node.id === "input-box") {
-              // Found the input-box element, now hide the original text span
+              // Found the input-box element, now clear the original text span content
               const meParent = node.parentElement?.closest("me-parent");
               if (meParent instanceof HTMLElement) {
                 const textSpan = meParent.querySelector("span.text");
                 if (textSpan instanceof HTMLElement) {
-                  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-                  textSpan.style.display = "none";
-                  // Remember which text span we hid for this node
-                  hiddenTextSpans.set(node, textSpan);
+                  // Save the original text content
+                  const originalContent = textSpan.textContent ?? "";
+                  textSpanContents.set(node, originalContent);
+                  // Clear the text to hide "new node" or previous text
+                  textSpan.textContent = "";
                 }
               }
             }
@@ -1154,11 +1156,15 @@ export class XMindView extends FileView {
           // Check for removed input-box elements
           for (const node of removedNodes) {
             if (node instanceof HTMLElement && node.id === "input-box") {
-              // Input-box removed, restore the text span
-              const textSpan = hiddenTextSpans.get(node);
-              if (textSpan instanceof HTMLElement) {
-                // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-                textSpan.style.display = "";
+              // Input-box removed, restore the text span content
+              const originalContent = textSpanContents.get(node);
+              // Find the parent and restore its text
+              const meParent = node.parentElement?.closest("me-parent");
+              if (meParent instanceof HTMLElement) {
+                const textSpan = meParent.querySelector("span.text");
+                if (textSpan instanceof HTMLElement && originalContent !== undefined) {
+                  textSpan.textContent = originalContent;
+                }
               }
             }
           }
