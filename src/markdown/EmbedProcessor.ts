@@ -27,13 +27,10 @@ const PROCESSED_ATTR = "data-xmind-processed";
 export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // --- Mechanism 1: MarkdownPostProcessor ---
   // This runs for every markdown block rendered in Reading View
-  // DO NOT use this for Live Preview as it corrupts source!
+  // Live Preview (CodeMirror) does not trigger MarkdownPostProcessor
   plugin.registerMarkdownPostProcessor(
     async (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-      // Only process if in Reading View (determined by parent structure)
-      if (el.closest(".markdown-reading-view")) {
-        void processEmbedsInElement(el, ctx.sourcePath, plugin);
-      }
+      void processEmbedsInElement(el, ctx.sourcePath, plugin);
       processLinks(el, plugin);
     }
   );
@@ -49,51 +46,6 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
  * 
  * Returns an object indicating where the element is and how safe it is to modify.
  */
-function checkMarkdownContentContext(el: HTMLElement): { inReadingView: boolean; inLivePreview: boolean } {
-  // Check if in Reading View (read-only, safe to modify)
-  const inReadingView = !!el.closest(".markdown-reading-view");
-  
-  // Check if in Live Preview (connected to source, modifications risk corruption)
-  const inLivePreview = !!el.closest(".cm-editor");
-
-  return { inReadingView, inLivePreview };
-}
-
-
-/**
- * Check if an element is an xmind embed that we should process.
- * Supports multiple element types since unknown files render differently.
- */
-function isXMindEmbed(el: HTMLElement): boolean {
-  if (el.hasAttribute(PROCESSED_ATTR)) return false;
-
-  // Check for standard embed classes
-  if (el.classList.contains("internal-embed") ||
-      el.classList.contains("file-embed") ||
-      el.classList.contains("embed-container")) {
-    const src = getEmbedSrc(el);
-    return src.toLowerCase().endsWith(".xmind");
-  }
-
-  // Also check anchor tags that might be embeds
-  if (el.tagName === "A") {
-    const src = el.getAttribute("href") ?? "";
-    if (src.toLowerCase().endsWith(".xmind")) {
-      // Only consider it if it's styled as an embed
-      const parent = el.parentElement;
-      if (parent && (
-        parent.classList.contains("embed-title") ||
-        parent.classList.contains("embed-container") ||
-        parent.classList.contains("internal-embed")
-      )) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 /**
  * Extract file reference from an embed element.
  * Tries multiple sources since unknown file types may render differently.
@@ -103,21 +55,33 @@ function getEmbedSrc(el: HTMLElement): string {
   let src = el.getAttribute("src") ?? 
             el.getAttribute("alt") ?? 
             el.getAttribute("data-src") ?? 
-            el.getAttribute("href") ??
+            el.getAttribute("data-path") ?? 
+            el.getAttribute("href") ?? 
             "";
 
-  // If still not found, look in child elements
+  // If still not found, look in child elements (links)
   if (!src) {
-    const link = el.querySelector<HTMLAnchorElement>("a[href*='.xmind']");
+    const link = el.querySelector<HTMLAnchorElement>("a[href]");
     if (link) {
-      src = link.getAttribute("href") ?? "";
+      const href = link.getAttribute("href") ?? "";
+      if (href.toLowerCase().endsWith(".xmind")) {
+        src = href;
+      }
+    }
+  }
+
+  // If still not found, check the title attribute (Obsidian stores embed title there)
+  if (!src) {
+    const title = el.getAttribute("title") ?? "";
+    if (title.toLowerCase().endsWith(".xmind")) {
+      src = title;
     }
   }
 
   // If still not found, check the text content for filename patterns
   if (!src) {
     const text = el.textContent ?? "";
-    const match = text.match(/([^\s/]+\.xmind)/i);
+    const match = text.match(/([^\s/\\]+\.xmind)/i);
     if (match) {
       src = match[1];
     }
@@ -187,12 +151,11 @@ async function processEmbedsInElement(
   sourcePath: string,
   plugin: XMindPlugin
 ): Promise<void> {
-  // Strategy 1: Look for standard embed elements (.internal-embed, .file-embed)
-  const embeds = el.querySelectorAll<HTMLElement>(
-    ".internal-embed, .file-embed, .embed-container"
-  );
-
-  for (const embed of Array.from(embeds)) {
+  // Strategy 1: Look for .internal-embed elements (Obsidian's default for unknown file types)
+  // These are the actual embed containers that Obsidian creates
+  const internalEmbeds = el.querySelectorAll<HTMLElement>(".internal-embed");
+  
+  for (const embed of Array.from(internalEmbeds)) {
     if (embed.hasAttribute(PROCESSED_ATTR)) continue;
 
     const src = getEmbedSrc(embed);
@@ -201,8 +164,36 @@ async function processEmbedsInElement(
     await replaceEmbedWithPreview(embed, sourcePath, plugin);
   }
 
-  // Strategy 2: Look for anchor tags that reference .xmind files
-  // For unknown file types, Obsidian may render ![[file.xmind]] as a link
+  // Strategy 2: Look for .file-embed and .embed-container elements
+  const fileEmbeds = el.querySelectorAll<HTMLElement>(
+    ".file-embed, .embed-container"
+  );
+
+  for (const embed of Array.from(fileEmbeds)) {
+    if (embed.hasAttribute(PROCESSED_ATTR)) continue;
+
+    const src = getEmbedSrc(embed);
+    if (!src.toLowerCase().endsWith(".xmind")) continue;
+
+    await replaceEmbedWithPreview(embed, sourcePath, plugin);
+  }
+
+  // Strategy 3: Look for ANY element with a data-src or data-path attribute pointing to .xmind
+  // This catches embeds that might be marked differently
+  const embeddedElements = el.querySelectorAll<HTMLElement>("[data-src], [data-path]");
+  for (const elem of Array.from(embeddedElements)) {
+    if (elem.hasAttribute(PROCESSED_ATTR)) continue;
+    
+    const dataSrc = elem.getAttribute("data-src") ?? "";
+    const dataPath = elem.getAttribute("data-path") ?? "";
+    
+    if (dataSrc.toLowerCase().endsWith(".xmind") || 
+        dataPath.toLowerCase().endsWith(".xmind")) {
+      await replaceEmbedWithPreview(elem, sourcePath, plugin);
+    }
+  }
+
+  // Strategy 4: Look for anchor tags that reference .xmind files in embed-like contexts
   const allAnchors = el.querySelectorAll<HTMLAnchorElement>("a[href]");
   for (const link of Array.from(allAnchors)) {
     // Skip if already processed
@@ -213,38 +204,28 @@ async function processEmbedsInElement(
     // Must be a .xmind file reference
     if (!href.toLowerCase().endsWith(".xmind")) continue;
     
-    // Skip regular links and only process embed-like contexts
-    // Check if parent looks like an embed container
-    let container: HTMLElement | null = null;
-    
-    // Check immediate parent classes
+    // Only process if this looks like an embed, not a regular inline link
     const parent = link.parentElement;
-    if (parent) {
-      // If parent has embed-related classes, use it or find the container
-      if (parent.classList.contains("embed-title") ||
-          parent.classList.contains("embed-container") ||
-          parent.classList.contains("internal-embed")) {
-        container = parent.closest(".embed-container") ?? parent;
-      }
-      // Also check if we should process block-level embeds in markdown
-      // (Obsidian may render ![[file.xmind]] as a link within a paragraph)
-      else if (parent.tagName === "P") {
-        // Check if this is the only content (or main content) of the paragraph
-        // This heuristic detects ![[file.xmind]] rendered as link inside <p>
-        const textContent = (parent.textContent ?? "").trim();
-        const linkText = (link.textContent ?? "").trim();
-        const fileName = href.split('/').pop() ?? "";
-        
-        // If the paragraph mainly contains just this link/filename, treat as embed
-        if (linkText === fileName || textContent === linkText || textContent.includes(fileName)) {
-          // Wrap the link in a container to process as embed
-          container = parent;
-        }
-      }
-    }
+    if (!parent) continue;
     
-    if (container instanceof HTMLElement) {
-      await replaceEmbedWithPreview(container, sourcePath, plugin);
+    // Case 1: Link is inside an embed container
+    if (parent.classList.contains("embed-title") ||
+        parent.classList.contains("embed-container") ||
+        parent.classList.contains("internal-embed")) {
+      await replaceEmbedWithPreview(parent, sourcePath, plugin);
+    }
+    // Case 2: Link is a direct child of a paragraph/div that ONLY contains this link
+    else if (parent.tagName === "P" || parent.tagName === "DIV") {
+      const textContent = (parent.textContent ?? "").trim();
+      const linkText = (link.textContent ?? "").trim();
+      const fileName = href.split('/').pop() ?? "";
+      
+      // If paragraph mainly contains just this link/filename, treat as embed
+      if (linkText === fileName || 
+          textContent === linkText || 
+          textContent === fileName) {
+        await replaceEmbedWithPreview(parent, sourcePath, plugin);
+      }
     }
   }
 }
@@ -272,67 +253,83 @@ async function replaceEmbedWithPreview(
 
   if (!(resolvedFile instanceof TFile)) return;
 
-  // Determine the context to decide how to handle the embed
-  const context = checkMarkdownContentContext(embed);
-
-  // CRITICAL: In Live Preview, do NOT call embed.empty() because it corrupts the source!
-  // Only safe to do this in Reading View (read-only)
-  if (context.inReadingView) {
-    // Reading View: safe to completely replace content
-    embed.empty();
-    
-    // Also ensure no stale loading messages are left
-    const oldContainers = embed.querySelectorAll(".xmind-embed-container, .xmind-embed-loading");
-    for (const oldContainer of Array.from(oldContainers)) {
-      oldContainer.remove();
-    }
-  } else if (context.inLivePreview) {
-    // Live Preview: only remove old containers, don't clear everything
-    const existingContainer = embed.querySelector(".xmind-embed-container");
-    if (existingContainer) {
-      existingContainer.remove();
-    }
-    const existingLoading = embed.querySelector(".xmind-embed-loading");
-    if (existingLoading) {
-      existingLoading.remove();
-    }
+  // Check if we're in Reading View - look for the container that has this specific class structure
+  const isReadingView = embed.closest(".markdown-reading-view");
+  
+  // Also check for alternative Reading View selectors
+  const isReadingViewAlt = embed.closest(".markdown-preview-view");
+  
+  // Debug: print complete parent chain to find where .markdown-reading-view actually is
+  let current: HTMLElement | null = embed;
+  let depth = 0;
+  const classChain: string[] = [];
+  while (current && depth < 30) {
+    const classes = current.className.substring(0, 80);
+    classChain.push(`${current.tagName}(${classes})`);
+    current = current.parentElement;
+    depth++;
   }
 
-  embed.addClass("xmind-embed-wrapper");
-  // Remove the generic file-embed styling so our container can fill it
-  embed.removeClass("file-embed");
-  embed.addClass("xmind-embed-block");
+  // Only process in Reading View to avoid corrupting source code in Live Preview
+  // Accept either .markdown-reading-view or .markdown-preview-view
+  const shouldProcess = isReadingView || isReadingViewAlt;
+  if (!shouldProcess) {
+    return;
+  }
 
-  const container = typeof document !== 'undefined' ? document.createElement("div") : null;
-  if (!container) return;
-  container.className = "xmind-embed-container";
+  // Strategy: Hide the original embed and create a new wrapper div next to it
+  // This is safe because we're in Reading View which is read-only
+  
+  embed.style.display = "none";
+
+  // Create a wrapper div to insert after the embed
+  const wrapper = typeof document !== 'undefined' ? document.createElement("div") : null;
+  if (!wrapper) {
+    return;
+  }
+
+  wrapper.className = "xmind-embed-wrapper xmind-embed-block";
+  wrapper.setAttribute(PROCESSED_ATTR, "true");
+  
+  // Insert wrapper right after the hidden embed
+  embed.parentElement?.insertBefore(wrapper, embed.nextSibling);
+
+  const contentContainer = typeof document !== 'undefined' ? document.createElement("div") : null;
+  if (!contentContainer) {
+    return;
+  }
+  contentContainer.className = "xmind-embed-container";
 
   const height = plugin.settings.embedHeight ?? 300;
-  container.style.height = `${height}px`;
-  embed.appendChild(container);
+  contentContainer.style.height = `${height}px`;
+  wrapper.appendChild(contentContainer);
 
   const loading = typeof document !== 'undefined' ? document.createElement("div") : null;
   if (!loading) return;
   loading.className = "xmind-embed-loading";
   loading.textContent = "Loading XMind...";
-  container.appendChild(loading);
+  contentContainer.appendChild(loading);
 
   try {
     const buffer = await plugin.app.vault.adapter.readBinary(
       normalizePath(resolvedFile.path)
     );
+    
     const multiSheet = await parseXMind(buffer);
+    
     const meData = xmindDataToMindElixir(multiSheet.sheets[0]);
 
     // If container was removed from DOM while we were loading, bail out
-    if (!container.isConnected) return;
+    if (!contentContainer.isConnected) {
+      return;
+    }
 
     loading.remove();
 
     const isDark = typeof document !== 'undefined' && document.body.classList.contains("theme-dark");
 
     const mind: MindElixirInstance = new MindElixir({
-      el: container,
+      el: contentContainer,
       direction: MindElixir.SIDE,
       draggable: false,
       editable: false,
@@ -349,7 +346,7 @@ async function replaceEmbedWithPreview(
     const setTimeoutFn = typeof setTimeout !== 'undefined' ? setTimeout : (fn: () => void, ms: number) => { fn(); return 1; };
     const clearTimeoutFn = typeof clearTimeout !== 'undefined' ? clearTimeout : (_id: number) => {};
     const fitTimer = setTimeoutFn(() => {
-      if (container.isConnected) {
+      if (contentContainer.isConnected) {
         mind.scaleFit();
         mind.toCenter();
       }
@@ -358,16 +355,16 @@ async function replaceEmbedWithPreview(
     // Clean up mind-elixir instance when the container is removed from DOM
     // Watch from document.body to catch all removal events, not just immediate parent
     const cleanupObserver = new MutationObserver(() => {
-      if (!container.isConnected) {
+      if (!contentContainer.isConnected) {
         clearTimeoutFn(fitTimer);
         mind.destroy?.();
         cleanupObserver.disconnect();
         
-        // IMPORTANT: Remove PROCESSED_ATTR from the parent embed when container is removed
+        // IMPORTANT: Remove PROCESSED_ATTR from the parent wrapper when container is removed
         // This allows the embed to be reprocessed when mode switches back
         // (e.g., from Source Mode back to Live Preview)
-        if (embed instanceof HTMLElement && embed.hasAttribute(PROCESSED_ATTR)) {
-          embed.removeAttribute(PROCESSED_ATTR);
+        if (wrapper instanceof HTMLElement && wrapper.hasAttribute(PROCESSED_ATTR)) {
+          wrapper.removeAttribute(PROCESSED_ATTR);
         }
       }
     });
@@ -380,12 +377,12 @@ async function replaceEmbedWithPreview(
     }
 
     // Click on the preview → open in full XMind view
-    container.addEventListener("click", (e) => {
+    contentContainer.addEventListener("click", (e) => {
       e.preventDefault();
       void openXMindView(plugin.app, resolvedFile);
     });
-    container.addClass("xmind-embed-clickable");
-    container.title = `Click to open ${resolvedFile.basename}`;
+    contentContainer.addClass("xmind-embed-clickable");
+    contentContainer.title = `Click to open ${resolvedFile.basename}`;
   } catch (err) {
     loading.remove();
     const errorEl = typeof document !== 'undefined' ? document.createElement("div") : null;
@@ -394,7 +391,7 @@ async function replaceEmbedWithPreview(
     errorEl.textContent = `Failed to load "${resolvedFile.name}": ${
       err instanceof Error ? err.message : String(err)
     }`;
-    container.appendChild(errorEl);
+    contentContainer.appendChild(errorEl);
   }
 }
 
