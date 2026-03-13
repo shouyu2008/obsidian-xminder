@@ -813,6 +813,11 @@ export class XMindView extends FileView {
 
       this.mind.init(data);
 
+      // Patch: Fix node editing text display issue
+      // When editing a node, the original text element should be hidden
+      // to avoid showing "new node" alongside the input box
+      this.patchNodeEditingDisplay();
+
       // Patch: allow dropping nodes onto root.
       // mind-elixir's drag validation rejects root as a drop target
       // because root.nodeObj.parent is undefined. Instead of modifying
@@ -1106,6 +1111,66 @@ export class XMindView extends FileView {
     });
     resizeObserver.observe(wrapper);
     this.register(() => resizeObserver.disconnect());
+  }
+
+  /**
+   * Patch to fix the node editing display issue
+   * When editing a node, the original text span should be hidden to prevent
+   * showing "new node" alongside the input box, especially on deep nodes (level 3+)
+   */
+  private patchNodeEditingDisplay(): void {
+    if (!this.mind || !this.contentEl) return;
+
+    const mapCanvas = this.contentEl.querySelector(".map-canvas");
+    if (!(mapCanvas instanceof HTMLElement)) return;
+
+    // Track which text spans are currently hidden due to editing
+    const hiddenTextSpans = new WeakMap<HTMLElement, HTMLElement>();
+
+    // Use MutationObserver to detect when an input-box is added or removed
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === "childList") {
+          const addedNodes = Array.from(mutation.addedNodes);
+          const removedNodes = Array.from(mutation.removedNodes);
+
+          // Check for added input-box elements
+          for (const node of addedNodes) {
+            if (node instanceof HTMLElement && node.id === "input-box") {
+              // Found the input-box element, now hide the original text span
+              const meParent = node.parentElement?.closest("me-parent");
+              if (meParent instanceof HTMLElement) {
+                const textSpan = meParent.querySelector("span.text");
+                if (textSpan instanceof HTMLElement) {
+                  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
+                  textSpan.style.display = "none";
+                  // Remember which text span we hid for this node
+                  hiddenTextSpans.set(node, textSpan);
+                }
+              }
+            }
+          }
+
+          // Check for removed input-box elements
+          for (const node of removedNodes) {
+            if (node instanceof HTMLElement && node.id === "input-box") {
+              // Input-box removed, restore the text span
+              const textSpan = hiddenTextSpans.get(node);
+              if (textSpan instanceof HTMLElement) {
+                // eslint-disable-next-line obsidianmd/no-static-styles-assignment
+                textSpan.style.display = "";
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Start observing the map-canvas for mutations
+    observer.observe(mapCanvas, { childList: true, subtree: true });
+
+    // Clean up observer when mind is destroyed
+    this.register(() => observer.disconnect());
   }
 
   private destroyMind(): void {
