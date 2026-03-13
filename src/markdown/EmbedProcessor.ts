@@ -11,7 +11,7 @@ const PROCESSED_ATTR = "data-xmind-processed";
 /**
  * Registers embed handling for ![[file.xmind]] and link handling for [[file.xmind]].
  *
- * Two complementary mechanisms are used:
+ * Three complementary mechanisms are used:
  *
  * 1. **registerMarkdownPostProcessor** — Obsidian invokes this for every
  *    rendered chunk in both Reading View and Live Preview. It works well when
@@ -22,6 +22,10 @@ const PROCESSED_ATTR = "data-xmind-processed";
  *    (icon + filename) that may *not* go through the post-processor pipeline,
  *    especially in Live Preview (CM6). The observer watches for these elements
  *    appearing in the DOM and replaces them with our mind-map preview.
+ *
+ * 3. **Workspace leaf event handler** — For Reading View, we listen to the
+ *    "changed" event on markdown leaves to ensure xmind embeds are processed
+ *    even when the view is initially rendered.
  */
 export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // --- Mechanism 1: MarkdownPostProcessor ---
@@ -34,6 +38,9 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
 
   // --- Mechanism 2: MutationObserver (fallback for Live Preview) ---
   startEmbedObserver(plugin);
+
+  // --- Mechanism 3: Listen for Reading View changes ---
+  startReadingViewObserver(plugin);
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +89,53 @@ function startEmbedObserver(plugin: XMindPlugin): void {
 
   // Clean up on plugin unload
   plugin.register(() => observer.disconnect());
+}
+
+/**
+ * Scans existing Reading View leaves for xmind embeds that may have been
+ * missed during initial plugin load. Reading View renders content directly
+ * to HTML without triggering the post-processor on view switch.
+ */
+function startReadingViewObserver(plugin: XMindPlugin): void {
+  // Function to scan a specific leaf's view content
+  const scanLeafForEmbeds = (leaf: any) => {
+    if (!leaf || !leaf.view) return;
+    
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const viewContent = leaf.view.containerEl?.querySelector?.(".markdown-reading-view");
+    if (viewContent instanceof HTMLElement) {
+      const file = (leaf.view as { file?: TFile }).file;
+      if (file) {
+        void processEmbedsInElement(viewContent, file.path, plugin);
+      }
+    }
+  };
+
+  // Scan all existing markdown leaves
+  const scanExistingLeaves = () => {
+    for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) {
+      scanLeafForEmbeds(leaf);
+    }
+  };
+
+  // Initial scan when plugin loads
+  plugin.app.workspace.onLayoutReady(() => {
+    scanExistingLeaves();
+  });
+
+  // Listen for changes to markdown leaves (when view is opened/switched)
+  plugin.registerEvent(
+    plugin.app.workspace.on("active-leaf-change", () => {
+      scanExistingLeaves();
+    })
+  );
+
+  // Also listen for file open events
+  plugin.registerEvent(
+    plugin.app.workspace.on("file-open", () => {
+      scanExistingLeaves();
+    })
+  );
 }
 
 /** Check if an element is an xmind embed that we should process */
@@ -185,6 +239,15 @@ async function replaceEmbedWithPreview(
 
   if (!(resolvedFile instanceof TFile)) return;
 
+  // Clear any existing mind-elixir instances in the embed
+  const existingMindEl = embed.querySelector(".xmind-embed-container");
+  if (existingMindEl instanceof HTMLElement) {
+    // The existing mind-elixir instance should be destroyed by cleanupObserver,
+    // but we also mark the embed as unprocessed to allow reprocessing
+    embed.removeAttribute(PROCESSED_ATTR);
+    return;
+  }
+
   // Clear the default content (icon + filename) and replace with our preview
   embed.empty();
   embed.addClass("xmind-embed-wrapper");
@@ -245,6 +308,7 @@ async function replaceEmbedWithPreview(
     }, 300);
 
     // Clean up mind-elixir instance when the container is removed from DOM
+    // Watch from document.body to catch all removal events, not just immediate parent
     const cleanupObserver = new MutationObserver(() => {
       if (!container.isConnected) {
         clearTimeoutFn(fitTimer);
@@ -252,7 +316,7 @@ async function replaceEmbedWithPreview(
         cleanupObserver.disconnect();
       }
     });
-    const target = typeof document !== 'undefined' ? (container.parentElement ?? document.body) : null;
+    const target = typeof document !== 'undefined' ? document.body : null;
     if (target) {
       cleanupObserver.observe(target, {
         childList: true,
