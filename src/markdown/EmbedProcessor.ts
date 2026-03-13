@@ -45,29 +45,29 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Check if an element is inside a markdown content area (not a menu/UI element)
+ * Check if an element is inside a markdown content area that is SAFE to modify.
+ * 
+ * CRITICAL: We should NOT modify elements in Live Preview (cm-editor) because
+ * DOM modifications in Live Preview are synced back to the markdown source,
+ * which corrupts the source code.
+ * 
+ * Only safe to modify in:
+ * - Reading View (markdown-reading-view): read-only, safe to modify DOM
+ * - NOT in Live Preview: modifications corrupt the source
  */
 function isInMarkdownContent(el: HTMLElement): boolean {
-  // Check if it's inside a markdown-reading-view (Reading View)
+  // ONLY process Reading View - it's read-only and safe to modify
   if (el.closest(".markdown-reading-view")) {
     return true;
   }
 
-  // Check if it's inside cm-editor (Live Preview editor)
+  // CRITICAL: DO NOT process Live Preview (cm-editor)
+  // Modifying DOM here corrupts the markdown source!
   if (el.closest(".cm-editor")) {
-    return true;
+    return false;
   }
 
-  // Check if it's inside a workspace view content
-  if (el.closest(".view-content")) {
-    return true;
-  }
-
-  // Check if it's inside markdown-source-view
-  if (el.closest(".markdown-source-view")) {
-    return true;
-  }
-
+  // Don't process other markdown views either
   return false;
 }
 
