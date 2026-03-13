@@ -26,17 +26,17 @@ const PROCESSED_ATTR = "data-xmind-processed";
  */
 export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // --- Mechanism 1: MarkdownPostProcessor ---
-  // This runs for every markdown block rendered
+  // This runs for every markdown block rendered in Reading View
+  // DO NOT use this for Live Preview as it corrupts source!
   plugin.registerMarkdownPostProcessor(
     async (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-      void processEmbedsInElement(el, ctx.sourcePath, plugin);
+      // Only process if in Reading View (determined by parent structure)
+      if (el.closest(".markdown-reading-view")) {
+        void processEmbedsInElement(el, ctx.sourcePath, plugin);
+      }
       processLinks(el, plugin);
     }
   );
-
-  // --- Mechanism 2: MutationObserver on document.body ---
-  // This catches embeds appearing anywhere in the DOM
-  startAggresiveEmbedObserver(plugin);
 }
 
 // ---------------------------------------------------------------------------
@@ -58,135 +58,6 @@ function checkMarkdownContentContext(el: HTMLElement): { inReadingView: boolean;
 
   return { inReadingView, inLivePreview };
 }
-
-/**
- * Aggressive mutation observer that catches xmind embeds in markdown content areas.
- * Only processes embeds within markdown views, not UI menus/dropdowns.
- */
-function startAggresiveEmbedObserver(plugin: XMindPlugin): void {
-  let processingQueue: Set<HTMLElement> = new Set();
-  let processTimeout: number | null = null;
-
-  const processQueue = () => {
-    if (processTimeout !== null) {
-      clearTimeout(processTimeout);
-      processTimeout = null;
-    }
-
-    for (const element of processingQueue) {
-      // Only process if still in DOM
-      if (!element.isConnected) {
-        processingQueue.delete(element);
-        continue;
-      }
-
-      // Skip if already processed
-      if (element.hasAttribute(PROCESSED_ATTR)) {
-        processingQueue.delete(element);
-        continue;
-      }
-
-      // CRITICAL: Only process if in markdown content area
-      // This prevents processing UI elements like file picker menus
-      const context = checkMarkdownContentContext(element);
-      if (!context.inReadingView && !context.inLivePreview) {
-        processingQueue.delete(element);
-        continue;
-      }
-
-      // Get the source path
-      const sourcePath = findSourcePath(element, plugin);
-
-      // Process as embed
-      void replaceEmbedWithPreview(element, sourcePath, plugin);
-      processingQueue.delete(element);
-    }
-  };
-
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      // Process added nodes
-      for (const node of Array.from(mutation.addedNodes)) {
-        if (!(node instanceof HTMLElement)) continue;
-
-        // Check if node is in markdown content
-        const context = checkMarkdownContentContext(node);
-        if (!context.inReadingView && !context.inLivePreview) {
-          continue;
-        }
-
-        // Check if node itself is an embed
-        const src = getEmbedSrc(node);
-        if (src.toLowerCase().endsWith(".xmind") && !node.hasAttribute(PROCESSED_ATTR)) {
-          processingQueue.add(node);
-        }
-
-        // Also recursively check children that are in markdown content
-        const allNodes = node.querySelectorAll<HTMLElement>("*");
-        for (const child of Array.from(allNodes)) {
-          const childContext = checkMarkdownContentContext(child);
-          if (!childContext.inReadingView && !childContext.inLivePreview) {
-            continue;
-          }
-          const childSrc = getEmbedSrc(child);
-          if (childSrc.toLowerCase().endsWith(".xmind") && !child.hasAttribute(PROCESSED_ATTR)) {
-            processingQueue.add(child);
-          }
-        }
-      }
-    }
-
-    // Debounce processing
-    if (processTimeout !== null) {
-      clearTimeout(processTimeout);
-    }
-    processTimeout = window.setTimeout(processQueue, 100);
-  });
-
-  // Start observing the entire document
-  const target = typeof document !== 'undefined' ? document.body : null;
-  if (target) {
-    observer.observe(target, {
-      childList: true,
-      subtree: true,
-    });
-  }
-
-  // Also do an initial scan when plugin loads
-  plugin.app.workspace.onLayoutReady(() => {
-    const allElements = document.querySelectorAll<HTMLElement>("*");
-    for (const el of Array.from(allElements)) {
-      const context = checkMarkdownContentContext(el);
-      if (!context.inReadingView && !context.inLivePreview) {
-        continue;
-      }
-      const src = getEmbedSrc(el);
-      if (src.toLowerCase().endsWith(".xmind") && !el.hasAttribute(PROCESSED_ATTR)) {
-        processingQueue.add(el);
-      }
-    }
-    processQueue();
-  });
-
-  // Clean up on unload
-  plugin.register(() => {
-    observer.disconnect();
-    if (processTimeout !== null) {
-      clearTimeout(processTimeout);
-    }
-  });
-}
-
-/**
- * Periodic scanner to find and process xmind embeds that may have been missed.
- * This is essential for Reading View which renders all content upfront without
- * triggering processors for embed syntax.
- *
- * The scanner looks for:
- * 1. Unprocessed span/div elements containing .xmind links
- * 2. Elements inside markdown views that reference .xmind files
- * 3. Links to .xmind files that should be embedded
- */
 
 
 /**
