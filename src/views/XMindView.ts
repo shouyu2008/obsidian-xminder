@@ -816,7 +816,8 @@ export class XMindView extends FileView {
       // Patch: Fix node editing text display issue
       // When editing a node, the original text element should be hidden
       // to avoid showing "new node" alongside the input box
-      this.patchNodeEditingDisplay();
+      // NOTE: Disabled for now due to potential conflicts with mind-elixir internals
+      // this.patchNodeEditingDisplay();
 
       // Patch: allow dropping nodes onto root.
       // mind-elixir's drag validation rejects root as a drop target
@@ -1128,15 +1129,13 @@ export class XMindView extends FileView {
     // Track which text spans are currently hidden due to editing
     const hiddenTextSpans = new WeakMap<HTMLElement, HTMLElement>();
 
-    // Use MutationObserver to detect when an input-box is added or removed
+    // Use MutationObserver with precise targeting: only observe direct children of map-canvas
+    // and specifically look for input-box elements. This minimizes performance impact.
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === "childList") {
-          const addedNodes = Array.from(mutation.addedNodes);
-          const removedNodes = Array.from(mutation.removedNodes);
-
-          // Check for added input-box elements
-          for (const node of addedNodes) {
+          // Only process addedNodes/removedNodes, not all descendants
+          for (const node of Array.from(mutation.addedNodes)) {
             if (node instanceof HTMLElement && node.id === "input-box") {
               // Found the input-box element, now hide the original text span
               const meParent = node.parentElement?.closest("me-parent");
@@ -1154,8 +1153,7 @@ export class XMindView extends FileView {
             }
           }
 
-          // Check for removed input-box elements
-          for (const node of removedNodes) {
+          for (const node of Array.from(mutation.removedNodes)) {
             if (node instanceof HTMLElement && node.id === "input-box") {
               // Input-box removed, restore the text span
               const textSpan = hiddenTextSpans.get(node);
@@ -1170,8 +1168,16 @@ export class XMindView extends FileView {
       }
     });
 
-    // Start observing the map-canvas for mutations
-    observer.observe(mapCanvas, { childList: true, subtree: true });
+    // Only observe me-tpc elements (node containers) for input-box additions
+    // This is more targeted than observing the entire map-canvas
+    const meRoot = mapCanvas.querySelector("me-root");
+    if (meRoot instanceof HTMLElement) {
+      // Observe me-tpc elements (the direct containers that will have input-box as child)
+      observer.observe(meRoot, { childList: true, subtree: true });
+    } else {
+      // Fallback: observe map-canvas if me-root not found
+      observer.observe(mapCanvas, { childList: true, subtree: true });
+    }
 
     // Clean up observer when mind is destroyed
     this.register(() => observer.disconnect());

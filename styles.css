@@ -441,6 +441,19 @@
 }
 
 .xmind-embed-container .map-container me-main {
-  width: 100%;
-  height: 100%;
+   width: 100%;
+   height: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Fix: Hide original text span when editing node
+   When a node is in edit mode, an #input-box element appears as a sibling
+   to the span.text. To prevent "new node" text from showing alongside the
+   input, we hide the span.text whenever #input-box is present in the parent.
+   This CSS-only solution avoids JavaScript interference with mind-elixir.
+   -------------------------------------------------------------------------- */
+
+/* Hide text span when input-box is present as a sibling in me-tpc */
+me-tpc:has(#input-box) span.text {
+   visibility: hidden !important;
 }
