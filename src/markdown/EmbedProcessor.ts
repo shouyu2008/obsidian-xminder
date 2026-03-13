@@ -32,6 +32,7 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
     async (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
       // Only process in Reading View to avoid any modifications in Live Preview
       const isReadingView = el.closest(".markdown-reading-view");
+      console.log("[XMinder] MarkdownPostProcessor called, isReadingView:", !!isReadingView);
       if (!isReadingView) {
         return;
       }
@@ -65,10 +66,13 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
 
         // Process each embed
         for (const embed of embeds) {
-          if (embed.hasAttribute(PROCESSED_ATTR)) continue;
-          
+          const hasProcessed = embed.hasAttribute(PROCESSED_ATTR);
           const src = getEmbedSrc(embed);
-          if (!src.toLowerCase().endsWith(".xmind")) continue;
+          const isXmind = src.toLowerCase().endsWith(".xmind");
+          console.log("[XMinder] MutationObserver: detected embed, hasProcessed:", hasProcessed, "isXmind:", isXmind);
+          
+          if (hasProcessed) continue;
+          if (!isXmind) continue;
 
           // Find source path from active view
           let sourcePath = "";
@@ -78,6 +82,7 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
             if (file) sourcePath = file.path;
           }
 
+          console.log("[XMinder] MutationObserver calling replaceEmbedWithPreview");
           void replaceEmbedWithPreview(embed, sourcePath, plugin);
         }
       }
@@ -91,6 +96,43 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
       childList: true,
       subtree: true,
     });
+  }
+
+  // --- Mechanism 3: Periodic check for broken embeds ---
+  // In case switching back from XMindView doesn't trigger DOM mutations,
+  // we periodically scan for embeds with broken mind-elixir instances
+  if (typeof setInterval !== 'undefined') {
+    setInterval(() => {
+      const readingViews = document.querySelectorAll(".markdown-reading-view");
+      for (const view of Array.from(readingViews)) {
+        const embeds = view.querySelectorAll<HTMLElement>(".internal-embed");
+        for (const embed of Array.from(embeds)) {
+          if (!embed.textContent?.toLowerCase().includes(".xmind")) continue;
+          
+          // Check if this embed has a wrapper with broken mind-elixir
+          let sibling = embed.nextElementSibling;
+          while (sibling) {
+            if (sibling.classList.contains("xmind-embed-wrapper")) {
+              const mapContainer = sibling.querySelector(".map-container");
+              if (!mapContainer) {
+                console.log("[XMinder] Periodic check found broken embed, clearing flag to reprocess");
+                embed.removeAttribute(PROCESSED_ATTR);
+                // Trigger reprocessing by calling replaceEmbedWithPreview directly
+                let sourcePath = "";
+                const activeLeaf = plugin.app.workspace.activeLeaf;
+                if (activeLeaf) {
+                  const file = (activeLeaf.view as { file?: TFile }).file;
+                  if (file) sourcePath = file.path;
+                }
+                void replaceEmbedWithPreview(embed, sourcePath, plugin);
+              }
+              break;
+            }
+            sibling = sibling.nextElementSibling;
+          }
+        }
+      }
+    }, 2000); // Check every 2 seconds
   }
 }
 
@@ -296,25 +338,45 @@ async function replaceEmbedWithPreview(
   sourcePath: string,
   plugin: XMindPlugin
 ): Promise<void> {
+  console.log("[XMinder] replaceEmbedWithPreview called, hasProcessedAttr:", embed.hasAttribute(PROCESSED_ATTR));
+  
   // Check if already processed and wrapper still exists
   if (embed.hasAttribute(PROCESSED_ATTR)) {
+    console.log("[XMinder] Checking for existing wrapper...");
     // Look for the wrapper that should be right after this embed
     let sibling = embed.nextElementSibling;
+    let foundWrapper = false;
     while (sibling) {
       if (sibling.classList.contains("xmind-embed-wrapper")) {
+        foundWrapper = true;
+        console.log("[XMinder] Found existing wrapper");
+        console.log("[XMinder]   - isConnected:", (sibling as any).isConnected);
+        console.log("[XMinder]   - HTML:", (sibling as HTMLElement).innerHTML.substring(0, 100));
+        
         // Wrapper exists and is still in DOM - check if it has valid content
-        if (sibling.isConnected) {
+        if ((sibling as any).isConnected) {
           const contentContainer = sibling.querySelector(".xmind-embed-container");
-          if (contentContainer && contentContainer.isConnected) {
+          const mapContainer = contentContainer?.querySelector(".map-container");
+          console.log("[XMinder]   - contentContainer exists:", !!contentContainer);
+          console.log("[XMinder]   - contentContainer.isConnected:", (contentContainer as any)?.isConnected);
+          console.log("[XMinder]   - mapContainer exists:", !!mapContainer);
+          
+          if (contentContainer && (contentContainer as any).isConnected && mapContainer) {
             // Everything is valid, don't reprocess
+            console.log("[XMinder] Wrapper is valid, skipping reprocess");
             return;
           }
         }
         // Wrapper exists but is disconnected or empty - remove it and reprocess
+        console.log("[XMinder] Wrapper is invalid, removing and reprocessing");
         sibling.remove();
         break;
       }
       sibling = sibling.nextElementSibling;
+    }
+    if (!foundWrapper) {
+      console.log("[XMinder] No wrapper found despite PROCESSED_ATTR, will reprocess");
+      embed.removeAttribute(PROCESSED_ATTR);
     }
   }
   
@@ -322,6 +384,7 @@ async function replaceEmbedWithPreview(
   embed.setAttribute(PROCESSED_ATTR, "true");
 
   const src = getEmbedSrc(embed);
+  console.log("[XMinder] src:", src);
   if (!src.toLowerCase().endsWith(".xmind")) return;
 
   // Resolve file path relative to current note
@@ -330,11 +393,13 @@ async function replaceEmbedWithPreview(
     sourcePath
   );
 
+  console.log("[XMinder] resolvedFile:", resolvedFile?.path);
   if (!(resolvedFile instanceof TFile)) return;
 
   // Note: We should only be called from Reading View context (guaranteed by registerEmbedProcessor)
   // But as a safety check, verify we're not in an editable context
   const isEditableContext = embed.closest(".cm-editor") || embed.closest(".CodeMirror");
+  console.log("[XMinder] isEditableContext:", isEditableContext);
   if (isEditableContext) {
     return;
   }
