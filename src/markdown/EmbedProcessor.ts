@@ -36,7 +36,6 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
     (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
       // Only process in Reading View to avoid any modifications in Live Preview
       const isReadingView = el.closest(".markdown-reading-view");
-      console.log("[XMinder] MarkdownPostProcessor called, isReadingView:", !!isReadingView);
       if (!isReadingView) {
         return;
       }
@@ -72,14 +71,12 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
         for (const embed of embeds) {
           // Skip processing during view switching to prevent race conditions
           if (isViewSwitching) {
-            console.log("[XMinder] MutationObserver: skipping - view is switching");
             continue;
           }
           
           const hasProcessed = embed.hasAttribute(PROCESSED_ATTR);
           const src = getEmbedSrc(embed);
           const isXmind = src.toLowerCase().endsWith(".xmind");
-          console.log("[XMinder] MutationObserver: detected embed, hasProcessed:", hasProcessed, "isXmind:", isXmind);
           
           if (hasProcessed) continue;
           if (!isXmind) continue;
@@ -92,7 +89,6 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
             if (file) sourcePath = file.path;
           }
 
-          console.log("[XMinder] MutationObserver calling replaceEmbedWithPreview");
           void replaceEmbedWithPreview(embed, sourcePath, plugin);
         }
       }
@@ -117,7 +113,6 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
     setInterval(() => {
       // Skip during view switching to prevent race conditions
       if (isViewSwitching) {
-        console.log("[XMinder] Periodic check: skipping - view is switching");
         return;
       }
       
@@ -131,15 +126,6 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
           let sibling = embed.nextElementSibling;
           while (sibling) {
             if (sibling.classList.contains("xmind-embed-wrapper")) {
-              const mapContainer = sibling.querySelector(".map-container");
-              const contentContainer = sibling.querySelector(".xmind-embed-container") as HTMLElement | null;
-              
-              // Check status but don't delete - just log for debugging
-              if (!mapContainer && contentContainer) {
-                console.log("[XMinder] Periodic check: wrapper exists but no map-container, children:", contentContainer.children.length);
-                // Don't delete the wrapper - the mind-elixir might still be initializing
-                // or the cleanupObserver delayed check will handle it properly
-              }
               break;
             }
             sibling = sibling.nextElementSibling;
@@ -352,46 +338,27 @@ async function replaceEmbedWithPreview(
   sourcePath: string,
   plugin: XMindPlugin
 ): Promise<void> {
-  console.log("[XMinder] replaceEmbedWithPreview called, hasProcessedAttr:", embed.hasAttribute(PROCESSED_ATTR));
-  
-  // Check if already processed and wrapper still exists
   if (embed.hasAttribute(PROCESSED_ATTR)) {
-    console.log("[XMinder] PROCESSED_ATTR already set, checking wrapper validity...");
-    // Look for the wrapper that should be right after this embed
     let sibling = embed.nextElementSibling;
     while (sibling) {
       if (sibling.classList.contains("xmind-embed-wrapper")) {
         const contentContainer = sibling.querySelector(".xmind-embed-container") as HTMLElement | null;
         const mapContainer = contentContainer?.querySelector(".map-container");
         
-        console.log("[XMinder]   - mapContainer exists:", !!mapContainer, "isConnected:", mapContainer ? (mapContainer as HTMLElement).isConnected : "N/A");
-        
         if (mapContainer && (mapContainer as HTMLElement).isConnected) {
-          // Everything is valid, don't reprocess
-          console.log("[XMinder] Wrapper and mind-elixir are valid, skipping");
           return;
         } else if (mapContainer && !(mapContainer as HTMLElement).isConnected) {
-          // Map container exists but disconnected - likely a view switch in progress
-          // Don't rebuild, just wait for DOM to stabilize
-          console.log("[XMinder] Mind-elixir temporarily disconnected (view switch), skipping");
           return;
         } else if (contentContainer) {
-          // Wrapper exists but no map container (truly broken)
-          // Rebuild mind-elixir in the existing container instead of creating new wrapper
-          console.log("[XMinder] Mind-elixir is missing, rebuilding in existing container");
-          
           const src = getEmbedSrc(embed);
           if (!src.toLowerCase().endsWith(".xmind")) return;
           
           const resolvedFile = plugin.app.metadataCache.getFirstLinkpathDest(src, sourcePath);
           if (!(resolvedFile instanceof TFile)) return;
           
-          // Rebuild in existing container
           await buildMindElixirInContainer(contentContainer, resolvedFile, plugin);
-          return;  // Important: return here, don't create new wrapper
+          return;
         } else {
-          // No content container, remove wrapper and reprocess
-          console.log("[XMinder] No content container, removing wrapper");
           sibling.remove();
           break;
         }
@@ -400,26 +367,19 @@ async function replaceEmbedWithPreview(
     }
   }
   
-  // Mark as being processed
   embed.setAttribute(PROCESSED_ATTR, "true");
 
   const src = getEmbedSrc(embed);
-  console.log("[XMinder] src:", src);
   if (!src.toLowerCase().endsWith(".xmind")) return;
 
-  // Resolve file path relative to current note
   const resolvedFile = plugin.app.metadataCache.getFirstLinkpathDest(
     src,
     sourcePath
   );
 
-  console.log("[XMinder] resolvedFile:", resolvedFile?.path);
   if (!(resolvedFile instanceof TFile)) return;
 
-  // Note: We should only be called from Reading View context (guaranteed by registerEmbedProcessor)
-  // But as a safety check, verify we're not in an editable context
   const isEditableContext = embed.closest(".cm-editor") || embed.closest(".CodeMirror");
-  console.log("[XMinder] isEditableContext:", isEditableContext);
   if (isEditableContext) {
     return;
   }
@@ -435,7 +395,6 @@ async function replaceEmbedWithPreview(
   while (existingSibling) {
     const next = existingSibling.nextElementSibling;
     if (existingSibling.classList.contains("xmind-embed-wrapper")) {
-      console.log("[XMinder] Removing existing wrapper before creating new one");
       existingSibling.remove();
     }
     existingSibling = next;
@@ -560,9 +519,7 @@ async function replaceEmbedWithPreview(
         if (cleanupCheckTimer === null) {
           cleanupCheckTimer = window.setTimeout(() => {
             cleanupCheckTimer = null;
-            // Check again after delay - if still disconnected, then truly cleanup
             if (!contentContainer.isConnected && !isDestroyed) {
-              console.log("[XMinder] cleanupObserver: container confirmed disconnected, destroying mind-elixir");
               isDestroyed = true;
               if (fitTimer !== null) {
                 clearTimeoutFn(fitTimer);
@@ -573,23 +530,17 @@ async function replaceEmbedWithPreview(
               mind.destroy?.();
               cleanupObserver.disconnect();
             } else if (wasDisconnected && contentContainer.isConnected) {
-              // Container was disconnected but is now reconnected (view switch completed)
-              // Need to refresh the mind-elixir rendering
-              console.log("[XMinder] cleanupObserver: container reconnected, refreshing mind-elixir");
               wasDisconnected = false;
               try {
-                // Re-fit and re-center to refresh the display
                 mind.scaleFit();
                 mind.toCenter();
               } catch (e) {
-                console.log("[XMinder] cleanupObserver: refresh failed, will rebuild");
-                // If refresh fails, trigger a rebuild by clearing and re-rendering
                 isDestroyed = true;
                 cleanupObserver.disconnect();
                 void buildMindElixirInContainer(contentContainer, resolvedFile, plugin);
               }
             }
-          }, 2000);  // Wait 2 seconds before cleanup
+          }, 2000);
         }
       }
     });
@@ -718,27 +669,23 @@ async function buildMindElixirInContainer(
           cleanupCheckTimer = window.setTimeout(() => {
             cleanupCheckTimer = null;
             if (!contentContainer.isConnected && !isDestroyed) {
-              console.log("[XMinder] buildMindElixirInContainer cleanupObserver: container confirmed disconnected, destroying");
               isDestroyed = true;
               if (fitTimer !== null) window.clearTimeout(fitTimer);
               if (resizeObserver) resizeObserver.disconnect();
               mind.destroy?.();
               cleanupObserver.disconnect();
             } else if (wasDisconnected && contentContainer.isConnected) {
-              // Container reconnected after being disconnected - refresh display
-              console.log("[XMinder] buildMindElixirInContainer cleanupObserver: container reconnected, refreshing");
               wasDisconnected = false;
               try {
                 mind.scaleFit();
                 mind.toCenter();
               } catch (e) {
-                console.log("[XMinder] buildMindElixirInContainer cleanupObserver: refresh failed, rebuilding");
                 isDestroyed = true;
                 cleanupObserver.disconnect();
                 void buildMindElixirInContainer(contentContainer, resolvedFile, plugin);
               }
             }
-          }, 2000);  // Wait 2 seconds before cleanup
+          }, 2000);
         }
       }
     });
@@ -799,9 +746,7 @@ function processLinks(el: HTMLElement, plugin: XMindPlugin): void {
 // ---------------------------------------------------------------------------
 
 async function openXMindView(app: App, file: TFile): Promise<void> {
-  // Set flag to prevent MutationObserver from interfering during view switch
   isViewSwitching = true;
-  console.log("[XMinder] openXMindView: setting isViewSwitching = true");
   
   try {
     const existing = app.workspace
@@ -819,10 +764,8 @@ async function openXMindView(app: App, file: TFile): Promise<void> {
     await leaf.openFile(file);
     void app.workspace.revealLeaf(leaf);
   } finally {
-    // Delay clearing the flag to allow DOM to stabilize after view switch
     setTimeout(() => {
       isViewSwitching = false;
-      console.log("[XMinder] openXMindView: setting isViewSwitching = false");
     }, 1000);
   }
 }
