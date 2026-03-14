@@ -19,6 +19,9 @@ export const XMIND_VIEW_TYPE = "xmind-view";
 // Debounce delay for auto-save (ms)
 const AUTO_SAVE_DELAY = 500;
 
+// Global cache for root node width to detect changes across layout updates
+let gRootWidthCache: number | null = null;
+
 // Type for mind-elixir instance with custom properties
 interface ExtendedMindElixirInstance {
   linkDiv?: (this: MindElixirInstance) => void;
@@ -30,9 +33,9 @@ interface ExtendedMindElixirInstance {
 // ---------------------------------------------------------------------------
 
 // Horizontal gap between adjacent levels (px)
-const H_GAP = 60;
+const H_GAP = 100;
 // Minimum vertical gap between sibling node boxes (px)
-const V_GAP = 16;
+const V_GAP = 24;
 // Horizontal padding inside the canvas before the root node
 const CANVAS_CENTER = 10000;
 
@@ -58,7 +61,8 @@ interface LayoutNode {
  */
 function buildLayoutTree(
   nodesEl: HTMLElement,
-  nodeData: NodeObj
+  nodeData: NodeObj,
+  lastRootWidth?: { value: number }
 ): { lhs: LayoutNode[]; rhs: LayoutNode[]; root: { tpc: HTMLElement; meRoot: HTMLElement; width: number; height: number } } {
   const meRootEl = nodesEl.querySelector("me-root") as HTMLElement;
   const rootTpc = meRootEl.querySelector("me-tpc") as HTMLElement;
@@ -76,6 +80,14 @@ function buildLayoutTree(
     width: savedRootTpcW || "",
     height: savedRootTpcH || "",
   });
+
+  // Detect root width change and trigger layout update if needed
+  if (lastRootWidth && lastRootWidth.value !== rootW) {
+    // Root width changed, force re-layout
+    lastRootWidth.value = rootW;
+  } else if (lastRootWidth) {
+    lastRootWidth.value = rootW;
+  }
 
   function buildChildren(
     meChildren: HTMLElement,
@@ -439,10 +451,18 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   // Force synchronous reflow so DOM measurements are accurate
   void nodesEl.offsetHeight;
 
+  // Ensure root node DOM is fully updated before measuring
+  // This is important when root node text has changed
+  const rootTpc = nodesEl.querySelector("me-root > me-tpc") as HTMLElement;
+  if (rootTpc) {
+    // Force a reflow to ensure the updated text is rendered
+    void rootTpc.offsetHeight;
+  }
+
   // -----------------------------------------------------------------------
   // 1. Measure node dimensions
   // -----------------------------------------------------------------------
-  const { lhs, rhs, root } = buildLayoutTree(nodesEl, this.nodeData);
+  const { lhs, rhs, root } = buildLayoutTree(nodesEl, this.nodeData, { value: gRootWidthCache ?? 0 });
 
   // 2. Compute subtree heights
   computeSubtreeHeights(lhs);
@@ -453,6 +473,9 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   // -----------------------------------------------------------------------
   const rootW = root.width;
   const rootH = root.height;
+
+  // Update cache for next comparison
+  gRootWidthCache = rootW;
   // Local root position
   const lrootX = 0;
   const lrootY = 0;
@@ -503,8 +526,8 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   });
 
   // Position me-root at the translated root position.
-  // rootW/rootH are measured from me-root (not me-tpc), so we position
-  // me-root directly — no tpc offset adjustment needed.
+  // Note: We don't set explicit width/height on me-root to avoid layout issues.
+  // The drag detection is handled by mind-elixir's internal logic on me-tpc elements.
   const meRootEl = root.meRoot;
   meRootEl.setCssStyles({
     position: "absolute",
@@ -607,6 +630,7 @@ export class XMindView extends FileView {
   private mind: MindElixirInstance | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private _resizeTimer: ReturnType<typeof setTimeout> | null = null;
+  private _rootUpdateTimer: ReturnType<typeof setTimeout> | null = null;
   private isDirty = false;
   /** All sheets from the current .xmind file */
   private allSheets: XMindData[] = [];
@@ -764,12 +788,59 @@ export class XMindView extends FileView {
 
       // Patch: allow dropping nodes onto root.
       // mind-elixir's drag validation rejects root as a drop target
-      // because root.nodeObj.parent is undefined. We fix this by directly
-      // setting parent=true on the root node. This is simpler and more reliable
-      // than using a Proxy which can cause state inconsistencies.
+      // because root.nodeObj.parent is undefined. We fix this by using Object.defineProperty
+      // to ensure the root node always has parent=true, even after undo operations.
       if (extendedMind.nodeData) {
         const nodeData = extendedMind.nodeData as unknown as Record<string, unknown>;
         nodeData.parent = true;
+
+        // Use Object.defineProperty to ensure root.parent is always true, even after undo/redo
+        // This prevents the issue where repeated dragging to root followed by Ctrl+Z
+        // breaks the drag-to-root functionality
+        Object.defineProperty(nodeData, 'parent', {
+          get(this: Record<string, unknown>) {
+            return true;
+          },
+          set(this: Record<string, unknown>, value: unknown) {
+            // Prevent setting parent to false on root node
+            if (value !== false) {
+              Object.defineProperty(this, 'parent', {
+                value: true,
+                writable: true,
+                configurable: true,
+                enumerable: true
+              });
+            }
+          },
+          configurable: true,
+          enumerable: true
+        });
+
+        // Also patch the getData method to ensure parent is always true
+        const originalGetData = this.mind.getData.bind(this.mind) as () => MindElixirData;
+        const patchedGetData = (): MindElixirData => {
+          const data = originalGetData();
+          if (data) {
+            const rootData = data as unknown as Record<string, unknown>;
+            if (!rootData.parent) {
+              rootData.parent = true;
+            }
+          }
+          return data;
+        };
+        (this.mind as { getData: () => MindElixirData }).getData = patchedGetData;
+
+        // Add beforeDrop hook to unify drag behavior on root node
+        // This ensures consistent drop effect regardless of where node is dropped on root
+        (this.mind as { beforeDrop?: (target: NodeObj, drag: NodeObj, e: Event) => boolean }).beforeDrop = 
+          (target: NodeObj, drag: NodeObj, e: Event): boolean => {
+            // Always allow dropping on root node
+            if (target.id === "root") {
+              return true;
+            }
+            // Use default behavior for other nodes
+            return true;
+          };
       }
     } catch (initErr) {
       this.showError(initErr instanceof Error ? initErr.message : String(initErr));
@@ -1026,14 +1097,45 @@ export class XMindView extends FileView {
     });
 
     // Listen for any operation (edit/add/remove/move) → trigger auto-save
-    this.mind.bus.addListener("operation", (_info) => {
+    this.mind.bus.addListener("operation", (info) => {
       // CRITICAL: Ensure root node still has parent=true for drag-to-root support
       // mind-elixir's drag validation may reset or check this during operations
       if (this.mind?.nodeData) {
         const nodeData = this.mind.nodeData as unknown as Record<string, unknown>;
         nodeData.parent = true;
       }
+
       this.scheduleSave();
+    });
+
+    // Listen for selectNode events to detect root node edits
+    // This is triggered when a node is selected after editing
+    this.mind.bus.addListener("selectNode", (node: NodeObj) => {
+      // Check if the selected node is the root node
+      if (node && (node.id === 'root' || node.id === this.mind?.nodeData?.id)) {
+        // Force a layout update when root node is selected (after edit)
+        requestAnimationFrame(() => {
+          if (this.mind) {
+            // Apply custom layout directly
+            customLinkDiv.call(this.mind);
+          }
+        });
+      }
+    });
+
+    // Listen for finishEdit events to detect when editing is complete
+    // This is more reliable than selectNode for detecting text changes
+    (this.mind.bus as { addListener?: (event: string, handler: (node: NodeObj) => void) => void }).addListener?.("finishEdit", (node: NodeObj) => {
+      // Check if the edited node is the root node
+      if (node && (node.id === 'root' || node.id === this.mind?.nodeData?.id)) {
+        // Force a layout update when root node edit is finished
+        requestAnimationFrame(() => {
+          if (this.mind) {
+            // Apply custom layout directly
+            customLinkDiv.call(this.mind);
+          }
+        });
+      }
     });
 
     // React to Obsidian theme changes
@@ -1062,6 +1164,121 @@ export class XMindView extends FileView {
     });
     resizeObserver.observe(wrapper);
     this.register(() => resizeObserver.disconnect());
+
+    // Watch for root node text changes to trigger layout updates
+    // This ensures right-side nodes move when root text increases
+    const rootTpc = wrapper.querySelector("me-root > me-tpc") as HTMLElement;
+    const meRoot = wrapper.querySelector("me-root") as HTMLElement;
+    
+    if (rootTpc && meRoot) {
+      // Add ResizeObserver to monitor root node size changes
+      // This is more reliable than MutationObserver for layout updates
+      const rootResizeObserver = new ResizeObserver(() => {
+        if (!this.mind) return;
+        // Debounce to avoid excessive layout updates
+        if (this._rootUpdateTimer !== null) clearTimeout(this._rootUpdateTimer);
+        this._rootUpdateTimer = setTimeout(() => {
+          this._rootUpdateTimer = null;
+          if (!this.mind) return;
+          // Apply custom layout directly
+          customLinkDiv.call(this.mind);
+        }, 50);
+      });
+      rootResizeObserver.observe(rootTpc);
+      this.register(() => rootResizeObserver.disconnect());
+
+      const rootObserver = new MutationObserver(() => {
+        if (!this.mind) return;
+        // Debounce to avoid excessive layout updates
+        if (this._rootUpdateTimer !== null) clearTimeout(this._rootUpdateTimer);
+        this._rootUpdateTimer = setTimeout(() => {
+          this._rootUpdateTimer = null;
+          if (!this.mind) return;
+          // Apply custom layout directly
+          customLinkDiv.call(this.mind);
+        }, 100);
+      });
+      
+      // Observe both the root tpc and its parent for comprehensive change detection
+      rootObserver.observe(rootTpc, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: ['style', 'class'],
+      });
+      
+      rootObserver.observe(meRoot, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class'],
+      });
+      
+      this.register(() => rootObserver.disconnect());
+
+      // Add direct event listeners for root node input box
+      // This catches editing events that might not trigger mutation observer
+      const setupInputListener = () => {
+        const inputBox = rootTpc.querySelector("#input-box") as HTMLInputElement;
+        if (inputBox) {
+          // Listen for input changes
+          inputBox.addEventListener("input", () => {
+            if (!this.mind) return;
+            if (this._rootUpdateTimer !== null) clearTimeout(this._rootUpdateTimer);
+            this._rootUpdateTimer = setTimeout(() => {
+              this._rootUpdateTimer = null;
+              if (!this.mind) return;
+              // Apply custom layout directly
+              customLinkDiv.call(this.mind);
+            }, 50);
+          });
+
+          // Listen for blur (when editing finishes)
+          inputBox.addEventListener("blur", () => {
+            if (!this.mind) return;
+            requestAnimationFrame(() => {
+              if (this.mind) {
+                // Apply custom layout directly
+                customLinkDiv.call(this.mind);
+              }
+            });
+          });
+
+          // Listen for keyboard events to catch Enter key
+          inputBox.addEventListener("keydown", (e: KeyboardEvent) => {
+            if (!this.mind) return;
+            if (e.key === "Enter") {
+              // Force layout update when Enter is pressed
+              requestAnimationFrame(() => {
+                if (this.mind) {
+                  customLinkDiv.call(this.mind);
+                }
+              });
+            }
+          });
+        }
+      };
+
+      // Set up listener immediately if input box exists
+      setupInputListener();
+
+      // Also watch for input box creation (when editing starts)
+      const inputObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList') {
+            for (const node of Array.from(mutation.addedNodes)) {
+              if (node instanceof HTMLElement && node.id === 'input-box') {
+                setupInputListener();
+                break;
+              }
+            }
+          }
+        }
+      });
+      inputObserver.observe(rootTpc, { childList: true });
+      this.register(() => inputObserver.disconnect());
+    }
   }
 
   /**

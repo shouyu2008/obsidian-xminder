@@ -216,6 +216,12 @@
   margin-inline-end: auto;
 }
 
+/* FIX: left-align every me-wrapper inside .rhs so each subtree expands
+ * leftward (toward root) instead of all sharing the far-right boundary. */
+.xmind-mind-wrapper .map-container .rhs me-wrapper {
+  margin-inline-start: auto;
+}
+
 /* Horizontal level spacing (--gap = padding on each me-parent).
  * Larger value = more space between a parent node and its children. */
 .xmind-mind-wrapper .map-container {
@@ -228,10 +234,11 @@
   margin-right: 50px !important;
 }
 
-/* Vertical breathing room between level-3+ sibling nodes */
+/* Ensure consistent horizontal spacing for both sides
+ * Increase vertical breathing room to prevent node overlap with long text */
 .xmind-mind-wrapper .map-container me-children > me-wrapper {
-  margin-top: 4px !important;
-  margin-bottom: 4px !important;
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
 }
 
 /* Level 3 node topic: pill style */
@@ -292,6 +299,27 @@
   background: #4fc3f7 !important;
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(79, 195, 247, 0.6) !important;
+}
+
+/* Fix: Ensure root node drag feedback matches selected style
+ * In custom layout, root node may have multiple drop targets.
+ * This CSS ensures consistent drag feedback across entire root node. */
+.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.show,
+.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.in.show {
+  outline: 3px solid #4fc3f7 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5) !important;
+  border-radius: inherit;
+  height: 100% !important;
+  top: 0 !important;
+  pointer-events: none;
+  background: none !important;
+}
+
+/* Hide before/after insert previews on root node to avoid confusion */
+.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.before.show,
+.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.after.show {
+  display: none !important;
 }
 
 /* Theme light overrides */
