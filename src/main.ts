@@ -260,8 +260,9 @@ export default class XMindPlugin extends Plugin {
       const multiSheet = await parseXMind(buffer);
       const t = i18n.t();
       const md = multiSheet.sheets.map((sheet, i) => {
-        const prefix = multiSheet.sheets.length > 1 ? `# ${sheet.title || `${t.defaults.canvas} ${i + 1}`}\n\n` : "";
-        return prefix + xmindNodeToMarkdown(sheet.rootTopic, 0);
+        const title = sheet.title || `${t.defaults.canvas} ${i + 1}`;
+        const prefix = multiSheet.sheets.length > 1 ? `# ${title}\n\n` : "";
+        return prefix + `mindmap\n  root(("${title}"))\n` + xmindNodeToMarkdown(sheet.rootTopic, 0);
       }).join("\n\n");
       this.exportMarkdownToClipboard(md);
     } catch (err) {
@@ -291,20 +292,24 @@ export default class XMindPlugin extends Plugin {
 import type { XMindNode } from "./xmind/types";
 
 /**
- * Convert an XMindNode tree to a Markdown outline (used for direct export
+ * Convert an XMindNode tree to a Mermaid mindmap (used for direct export
  * without an open view).
  */
 function xmindNodeToMarkdown(node: XMindNode, depth: number): string {
-  const indent = "  ".repeat(depth);
-  const prefix = depth === 0 ? "# " : `${indent}- `;
-  let result = `${prefix}${node.title}\n`;
-  if (node.notes) {
-    result += `${indent}  > ${node.notes.replace(/\n/g, `\n${indent}  > `)}\n`;
-  }
-  if (node.children) {
+  const indent = "  ".repeat(depth + 2);
+  let result = "";
+  
+  if (node.children && node.children.length > 0) {
     for (const child of node.children) {
-      result += xmindNodeToMarkdown(child, depth + 1);
+      result += `${indent}${child.title}\n`;
+      if (child.notes) {
+        result += `${indent}  ::note(${child.notes.replace(/\n/g, " ").replace(/\[/g, "").replace(/\]/g, "")})\n`;
+      }
+      if (child.children) {
+        result += xmindNodeToMarkdown(child, depth + 1);
+      }
     }
   }
+  
   return result;
 }

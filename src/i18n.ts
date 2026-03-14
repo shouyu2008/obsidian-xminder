@@ -83,13 +83,13 @@ interface I18nStrings {
 const zhStrings: I18nStrings = {
   commands: {
     createNewXMind: "新建 XMind 文件",
-    exportAsMarkdown: "导出 XMind 为 Markdown 大纲",
+    exportAsMarkdown: "导出 XMind 为 Mermaid 脑图",
     fitToView: "适配 XMind 视图",
     saveFile: "保存 XMind 文件",
   },
   menus: {
     openWithXMind: "用 XMind 打开",
-    exportAsMarkdown: "导出为 Markdown 大纲",
+    exportAsMarkdown: "导出为 Mermaid 脑图",
   },
   defaults: {
     newMindMap: "新建思维导图",
@@ -103,7 +103,7 @@ const zhStrings: I18nStrings = {
     created: "XMinder：已创建 {name}.xmind",
     createFailed: "XMinder：创建文件失败：{error}",
     exportFailed: 'XMinder：导出"{name}"失败：{error}',
-    copiedToClipboard: "XMinder：Markdown 大纲已复制到剪贴板。",
+    copiedToClipboard: "XMinder：Mermaid 脑图已复制到剪贴板。",
     copyFailed: "XMinder：复制到剪贴板失败：{error}",
     saved: "XMinder：已保存。",
     saveFailed: "XMinder：保存失败：{error}",
@@ -161,13 +161,13 @@ const zhStrings: I18nStrings = {
 const enStrings: I18nStrings = {
   commands: {
     createNewXMind: "Create New XMind File",
-    exportAsMarkdown: "Export XMind as Markdown Outline",
+    exportAsMarkdown: "Export XMind as Mermaid Mindmap",
     fitToView: "Fit XMind View",
     saveFile: "Save XMind File",
   },
   menus: {
     openWithXMind: "Open with XMind",
-    exportAsMarkdown: "Export as Markdown Outline",
+    exportAsMarkdown: "Export as Mermaid Mindmap",
   },
   defaults: {
     newMindMap: "New Mind Map",
@@ -181,7 +181,7 @@ const enStrings: I18nStrings = {
     created: "XMinder: Created {name}.xmind",
     createFailed: "XMinder: Failed to create file: {error}",
     exportFailed: 'XMinder: Failed to export "{name}": {error}',
-    copiedToClipboard: "XMinder: Markdown outline copied to clipboard.",
+    copiedToClipboard: "XMinder: Mermaid mindmap copied to clipboard.",
     copyFailed: "XMinder: Failed to copy to clipboard: {error}",
     saved: "XMinder: Saved.",
     saveFailed: "XMinder: Failed to save: {error}",

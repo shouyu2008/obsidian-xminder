@@ -1406,10 +1406,16 @@ export class XMindView extends FileView {
   // Commands exposed to main.ts
   // -------------------------------------------------------------------------
 
-  /** Export current mind map data as Markdown outline */
+  /** Export current mind map data as Mermaid mindmap */
   exportAsMarkdown(): string {
     if (!this.mind) return "";
-    return this.mind.getDataMd();
+    const data = this.mind.getData();
+    if (!data || !data.nodeData) return "";
+    
+    const title = this.allSheets[this.activeSheetIndex]?.title || "Mind Map";
+    let result = `mindmap\n  root(("${title}"))\n`;
+    result += mindElixirNodeToMermaid(data.nodeData, 0);
+    return result;
   }
 
   /** Fit the diagram to the viewport */
@@ -1506,4 +1512,23 @@ function mapMENodeToXMind(node: NodeObj): XMindNode {
   }
 
   return xnode;
+}
+
+function mindElixirNodeToMermaid(node: NodeObj, depth: number): string {
+  const indent = "  ".repeat(depth + 2);
+  let result = "";
+  
+  if (node.children && node.children.length > 0) {
+    for (const child of node.children) {
+      result += `${indent}${child.topic}\n`;
+      if (child.note) {
+        result += `${indent}  ::note(${child.note.replace(/\n/g, " ").replace(/\[/g, "").replace(/\]/g, "")})\n`;
+      }
+      if (child.children) {
+        result += mindElixirNodeToMermaid(child, depth + 1);
+      }
+    }
+  }
+  
+  return result;
 }
