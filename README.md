@@ -49,7 +49,6 @@ XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as i
 The exported Mermaid mindmap format can be pasted directly into notes, and the Mermaid plugin will automatically render it as a visual mind map:
 
 ```markdown
-```mermaid
 mindmap
   root(("Central Topic"))
     Main Topic 1
@@ -57,7 +56,6 @@ mindmap
       Subtopic 2
     Main Topic 2
       Subtopic 3
-```
 ```
 
 #### Toolbar
