@@ -12,6 +12,7 @@ import { parseXMind } from "../xmind/parser";
 import { serializeXMind } from "../xmind/serializer";
 import type { XMindNode, XMindData } from "../xmind/types";
 import type XMindPlugin from "../main";
+import { i18n } from "../i18n";
 
 export const XMIND_VIEW_TYPE = "xmind-view";
 
@@ -71,8 +72,10 @@ function buildLayoutTree(
   const rootW = rootTpc.offsetWidth;
   const rootH = rootTpc.offsetHeight;
   rootTpc.removeClass("xmind-fit-content");
-  if (savedRootTpcW) rootTpc.style.width = savedRootTpcW;
-  if (savedRootTpcH) rootTpc.style.height = savedRootTpcH;
+  rootTpc.setCssStyles({
+    width: savedRootTpcW || "",
+    height: savedRootTpcH || "",
+  });
 
   function buildChildren(
     meChildren: HTMLElement,
@@ -266,13 +269,15 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 function makeSvg(): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("overflow", "visible");
-  svg.style.position = "absolute";
-  svg.style.top = "0";
-  svg.style.left = "0";
-  svg.style.width = "100%";
-  svg.style.height = "100%";
-  svg.style.pointerEvents = "none";
-  svg.style.zIndex = "-1";
+  svg.setCssStyles({
+    position: "absolute",
+    top: "0",
+    left: "0",
+    width: "100%",
+    height: "100%",
+    pointerEvents: "none",
+    zIndex: "-1",
+  });
   return svg;
 }
 
@@ -341,7 +346,7 @@ function drawConnectors(
     svg.appendChild(makePath(d, color, strokeW));
 
     // Set branch color on tpc
-    node.tpc.style.borderColor = color;
+    node.tpc.setCssStyles({ borderColor: color });
 
     // Recurse
     const childRight = nLeft + nW;
@@ -390,39 +395,45 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   if (oldCustomSvg) oldCustomSvg.remove();
 
   nodesEl.querySelectorAll("me-main").forEach((el) => {
-    (el as HTMLElement).style.display = "";
+    (el as HTMLElement).setCssStyles({ display: "" });
   });
   nodesEl.querySelectorAll("me-wrapper").forEach((el) => {
-    (el as HTMLElement).style.display = "";
+    (el as HTMLElement).setCssStyles({ display: "" });
   });
   nodesEl.querySelectorAll("me-children").forEach((el) => {
-    (el as HTMLElement).style.display = "";
+    (el as HTMLElement).setCssStyles({ display: "" });
   });
   nodesEl.querySelectorAll("me-parent").forEach((el) => {
     const e = el as HTMLElement;
-    e.style.position = "";
-    e.style.left = "";
-    e.style.top = "";
-    e.style.padding = "";
-    e.style.margin = "";
-    e.style.direction = "";
+    e.setCssStyles({
+      position: "",
+      left: "",
+      top: "",
+      padding: "",
+      margin: "",
+      direction: "",
+    });
   });
   const meRootReset = nodesEl.querySelector("me-root") as HTMLElement;
   if (meRootReset) {
-    meRootReset.style.position = "";
-    meRootReset.style.left = "";
-    meRootReset.style.top = "";
+    meRootReset.setCssStyles({
+      position: "",
+      left: "",
+      top: "",
+    });
   }
   // Reset me-nodes to its original CSS state (flex layout for measurement)
-  nodesEl.style.cssText = "";
+  nodesEl.removeAttribute("style");
 
   // Also reset me-epd elements that may have been styled
   nodesEl.querySelectorAll("me-epd").forEach((el) => {
     const e = el as HTMLElement;
-    e.style.position = "";
-    e.style.top = "";
-    e.style.left = "";
-    e.style.right = "";
+    e.setCssStyles({
+      position: "",
+      top: "",
+      left: "",
+      right: "",
+    });
   });
 
   // Force synchronous reflow so DOM measurements are accurate
@@ -482,22 +493,24 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   // 5. Collapse layout containers & apply absolute positions
   // -----------------------------------------------------------------------
   nodesEl.querySelectorAll("me-main").forEach((el) => {
-    (el as HTMLElement).style.display = "contents";
+    (el as HTMLElement).setCssStyles({ display: "contents" });
   });
   nodesEl.querySelectorAll("me-wrapper").forEach((el) => {
-    (el as HTMLElement).style.display = "contents";
+    (el as HTMLElement).setCssStyles({ display: "contents" });
   });
   nodesEl.querySelectorAll("me-children").forEach((el) => {
-    (el as HTMLElement).style.display = "contents";
+    (el as HTMLElement).setCssStyles({ display: "contents" });
   });
 
   // Position me-root at the translated root position.
   // rootW/rootH are measured from me-root (not me-tpc), so we position
   // me-root directly — no tpc offset adjustment needed.
   const meRootEl = root.meRoot;
-  meRootEl.style.position = "absolute";
-  meRootEl.style.left = `${Math.round(tRootX)}px`;
-  meRootEl.style.top = `${Math.round(tRootY)}px`;
+  meRootEl.setCssStyles({
+    position: "absolute",
+    left: `${Math.round(tRootX)}px`,
+    top: `${Math.round(tRootY)}px`,
+  });
 
   // Position all branch nodes
   function applyAll(nodes: LayoutNode[]): void {
@@ -505,23 +518,27 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
       const tx = node.x + offsetX;
       const ty = node.y + offsetY;
       const meParent = node.parent;
-      meParent.style.position = "absolute";
-      meParent.style.left = `${Math.round(tx)}px`;
-      meParent.style.top = `${Math.round(ty)}px`;
-      meParent.style.padding = "0";
-      meParent.style.margin = "0";
-      meParent.style.direction = "ltr";
+      meParent.setCssStyles({
+        position: "absolute",
+        left: `${Math.round(tx)}px`,
+        top: `${Math.round(ty)}px`,
+        padding: "0",
+        margin: "0",
+        direction: "ltr",
+      });
       // expand button positioning
       const epd = meParent.querySelector("me-epd");
       if (epd instanceof HTMLElement) {
-        epd.style.position = "absolute";
-        epd.style.top = `${(node.height - 18) / 2}px`;
-        epd.style.left = "";
-        epd.style.right = "";
+        epd.setCssStyles({
+          position: "absolute",
+          top: `${(node.height - 18) / 2}px`,
+          left: "",
+          right: "",
+        });
         if (node.direction === "lhs") {
-          epd.style.left = "-10px";
+          epd.setCssStyles({ left: "-10px", right: "" });
         } else {
-          epd.style.right = "-10px";
+          epd.setCssStyles({ left: "", right: "-10px" });
         }
       }
       applyAll(node.children);
@@ -547,11 +564,13 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   const nodesLeft = CANVAS_CENTER - rootCXInNodes;
   const nodesTop = CANVAS_CENTER - rootCYInNodes;
 
-  nodesEl.style.position = "absolute";
-  nodesEl.style.left = `${Math.round(nodesLeft)}px`;
-  nodesEl.style.top = `${Math.round(nodesTop)}px`;
-  nodesEl.style.width = `${Math.round(contentW + PAD * 2)}px`;
-  nodesEl.style.height = `${Math.round(contentH + PAD * 2)}px`;
+  nodesEl.setCssStyles({
+    position: "absolute",
+    left: `${Math.round(nodesLeft)}px`,
+    top: `${Math.round(nodesTop)}px`,
+    width: `${Math.round(contentW + PAD * 2)}px`,
+    height: `${Math.round(contentH + PAD * 2)}px`,
+  });
 
   // -----------------------------------------------------------------------
   // 6. Re-measure root after absolute positioning (flex stretching is gone)
@@ -564,7 +583,7 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   // 7. Draw SVG connectors using TRANSLATED coordinates
   // -----------------------------------------------------------------------
   const linesEl = nodesEl.querySelector("svg.lines");
-  if (linesEl instanceof SVGSVGElement) linesEl.innerHTML = "";
+  if (linesEl instanceof SVGSVGElement) linesEl.replaceChildren();
   nodesEl.querySelectorAll("svg.subLines").forEach((s) => s.remove());
 
   const svg = makeSvg();
@@ -631,6 +650,7 @@ export class XMindView extends FileView {
       e.preventDefault();
       void this.saveNow();
     });
+    await Promise.resolve();
   }
 
   async onClose(): Promise<void> {
@@ -709,10 +729,6 @@ export class XMindView extends FileView {
     // [object HTMLDivElement] type check reliably in Electron/Obsidian.
     const wrapper = document.createElement("div");
     wrapper.className = "xmind-mind-wrapper";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    wrapper.style.width = "100%";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    wrapper.style.height = "100%";
     this.contentEl.appendChild(wrapper);
 
     const isDark = document.body.classList.contains("theme-dark");
@@ -735,7 +751,8 @@ export class XMindView extends FileView {
 
       // Inject custom linkDiv before init() so every layout call uses it
       const extendedMind = this.mind as MindElixirInstance & ExtendedMindElixirInstance;
-      extendedMind.linkDiv = customLinkDiv.bind(this.mind);
+      const linkDiv = customLinkDiv.bind(this.mind) as (this: MindElixirInstance) => void;
+      extendedMind.linkDiv = linkDiv;
 
       this.mind.init(data);
 
@@ -777,62 +794,80 @@ export class XMindView extends FileView {
         const ICON_ZOOMIN = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>`;
         const ICON_ZOOMOUT = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>`;
 
+        const renderSvg = (container: HTMLElement, svg: string): void => {
+          const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+          const svgEl = parsed.documentElement;
+          container.replaceChildren(svgEl);
+        };
+
+        const updateBtnIcon = (btn: HTMLButtonElement, icon: string): void => {
+          const wrapper = btn.querySelector(".xmind-toolbar-icon");
+          if (wrapper instanceof HTMLElement) {
+            renderSvg(wrapper, icon);
+            return;
+          }
+          const iconWrapper = document.createElement("div");
+          iconWrapper.className = "xmind-toolbar-icon";
+          renderSvg(iconWrapper, icon);
+          btn.replaceChildren(iconWrapper);
+        };
+
         const makeBtn = (icon: string, title: string): HTMLButtonElement => {
           const btn = document.createElement("button");
           btn.className = "xmind-toolbar-btn";
           btn.title = title;
           const iconWrapper = document.createElement("div");
-          iconWrapper.innerHTML = icon;
+          iconWrapper.className = "xmind-toolbar-icon";
+          renderSvg(iconWrapper, icon);
           btn.appendChild(iconWrapper);
           return btn;
         };
 
-        // ===================== LEFT TOOLBAR =====================
+        const t = i18n.t();
+
         const leftBar = document.createElement("div");
         leftBar.className = "xmind-toolbar-left";
 
-        // 1) Drag/pan toggle
-        const dragBtn = makeBtn(ICON_HAND, "拖动画布");
+        const dragBtn = makeBtn(ICON_HAND, t.view.dragCanvas);
         leftBar.appendChild(dragBtn);
 
-        // 2) Center / focus root
-        const centerBtn = makeBtn(ICON_CENTER, "聚焦根节点");
+        const centerBtn = makeBtn(ICON_CENTER, t.view.focusRoot);
         centerBtn.addEventListener("click", () => {
           mind.toCenter();
         });
         leftBar.appendChild(centerBtn);
 
-        // 3) Help — keyboard shortcuts
-        const helpBtn = makeBtn(ICON_HELP, "快捷键帮助");
+        const helpBtn = makeBtn(ICON_HELP, t.view.shortcutsHelp);
         helpBtn.addEventListener("click", () => {
           const helpEl = container.querySelector(".xmind-help-panel");
           if (helpEl instanceof HTMLElement) {
-            helpEl.style.display = helpEl.style.display === "none" ? "block" : "none";
+            helpEl.setCssStyles({
+              display: helpEl.style.display === "none" ? "block" : "none",
+            });
           }
         });
         leftBar.appendChild(helpBtn);
 
         container.appendChild(leftBar);
 
-        // Help panel
         const helpPanel = document.createElement("div");
         helpPanel.className = "xmind-help-panel";
-        helpPanel.style.display = "none";
+        helpPanel.setCssStyles({ display: "none" });
         
         const helpTitle = document.createElement("div");
         helpTitle.className = "xmind-help-title";
-        helpTitle.textContent = "Keyboard Shortcuts";
+        helpTitle.textContent = t.view.shortcuts;
         helpPanel.appendChild(helpTitle);
         
         const helpTable = document.createElement("table");
         helpTable.className = "xmind-help-table";
         const shortcuts = [
-          ["Tab", "Add child node"],
-          ["Enter", "Add sibling node"],
-          ["Ctrl+C", "Copy"],
-          ["Ctrl+V", "Paste"],
-          ["Ctrl+Z", "Undo"],
-          ["Ctrl+S", "Save"],
+          ["Tab", t.view.addChildNode],
+          ["Enter", t.view.addSiblingNode],
+          ["Ctrl+C", t.view.copy],
+          ["Ctrl+V", t.view.paste],
+          ["Ctrl+Z", t.view.undo],
+          ["Ctrl+S", t.view.save],
         ];
         
         for (const [key, desc] of shortcuts) {
@@ -853,41 +888,35 @@ export class XMindView extends FileView {
           if (helpPanel.style.display === "none") return;
           const target = e.target as HTMLElement;
           if (!helpPanel.contains(target) && target !== helpBtn && !helpBtn.contains(target)) {
-            // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-            helpPanel.style.display = "none";
+            helpPanel.setCssStyles({ display: "none" });
           }
         });
 
-        // ===================== RIGHT-BOTTOM TOOLBAR =====================
         const ICON_FULLSCREEN = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
 
         const rbBar = document.createElement("div");
         rbBar.className = "xmind-toolbar-rb";
 
-        // Zoom out
-        const zoomOutBtn = makeBtn(ICON_ZOOMOUT, "缩小");
+        const zoomOutBtn = makeBtn(ICON_ZOOMOUT, t.view.zoomOut);
         zoomOutBtn.addEventListener("click", () => {
           if (mind.scaleVal > 0.6) mind.scale(mind.scaleVal - mind.scaleSensitivity);
         });
         rbBar.appendChild(zoomOutBtn);
 
-        // Zoom in
-        const zoomInBtn = makeBtn(ICON_ZOOMIN, "放大");
+        const zoomInBtn = makeBtn(ICON_ZOOMIN, t.view.zoomIn);
         zoomInBtn.addEventListener("click", () => {
           if (mind.scaleVal < 1.6) mind.scale(mind.scaleVal + mind.scaleSensitivity);
         });
         rbBar.appendChild(zoomInBtn);
 
-        // Reset (scaleFit + toCenter)
-        const resetBtn = makeBtn(ICON_RESET, "重置画布大小");
+        const resetBtn = makeBtn(ICON_RESET, t.view.resetCanvas);
         resetBtn.addEventListener("click", () => {
           mind.scaleFit();
           mind.toCenter();
         });
         rbBar.appendChild(resetBtn);
 
-        // Fullscreen
-        const fullscreenBtn = makeBtn(ICON_FULLSCREEN, "全屏");
+        const fullscreenBtn = makeBtn(ICON_FULLSCREEN, t.view.fullscreen);
         fullscreenBtn.addEventListener("click", () => {
           if (document.fullscreenElement === mind.el) {
             void document.exitFullscreen();
@@ -899,7 +928,6 @@ export class XMindView extends FileView {
 
         container.appendChild(rbBar);
 
-        // ===================== SHEET SELECTOR (right-top) =====================
         if (this.allSheets.length > 1) {
           const sheetSelector = document.createElement("div");
           sheetSelector.className = "xmind-sheet-selector";
@@ -909,7 +937,7 @@ export class XMindView extends FileView {
           this.allSheets.forEach((sheet, i) => {
             const option = document.createElement("option");
             option.value = String(i);
-            option.textContent = sheet.title || `画布 ${i + 1}`;
+            option.textContent = sheet.title || `${t.defaults.canvas} ${i + 1}`;
             if (i === this.activeSheetIndex) option.selected = true;
             select.appendChild(option);
           });
@@ -920,7 +948,6 @@ export class XMindView extends FileView {
           container.appendChild(sheetSelector);
         }
 
-        // ===================== DRAG/PAN LOGIC =====================
         let panEnabled = false;
         let isPanning = false;
         let startX = 0;
@@ -930,12 +957,9 @@ export class XMindView extends FileView {
 
         dragBtn.addEventListener("click", () => {
           panEnabled = !panEnabled;
-          dragBtn.innerHTML = "";
-          const iconWrapper = document.createElement("div");
-          iconWrapper.innerHTML = panEnabled ? ICON_POINTER : ICON_HAND;
-          dragBtn.appendChild(iconWrapper);
-          dragBtn.title = panEnabled ? "切换为指针模式" : "切换为拖动画布";
-          mapEl.style.cursor = panEnabled ? "grab" : "";
+          updateBtnIcon(dragBtn, panEnabled ? ICON_POINTER : ICON_HAND);
+          dragBtn.title = panEnabled ? t.view.switchToPointer : t.view.switchToDrag;
+          mapEl.setCssStyles({ cursor: panEnabled ? "grab" : "" });
         });
 
         mapEl.addEventListener("mousedown", (e: MouseEvent) => {
@@ -947,7 +971,7 @@ export class XMindView extends FileView {
           startY = e.clientY;
            scrollX = container.scrollLeft;
            scrollY = container.scrollTop;
-           mapEl.style.cursor = "grabbing";
+           mapEl.setCssStyles({ cursor: "grabbing" });
           e.preventDefault();
           e.stopPropagation();
         }, true);
@@ -962,7 +986,7 @@ export class XMindView extends FileView {
         window.addEventListener("mouseup", () => {
           if (isPanning) {
             isPanning = false;
-            mapEl.style.cursor = panEnabled ? "grab" : "";
+            mapEl.setCssStyles({ cursor: panEnabled ? "grab" : "" });
           }
         });
       }
@@ -1070,7 +1094,7 @@ export class XMindView extends FileView {
                  if (textSpan instanceof HTMLElement) {
                    // Use visibility: hidden instead of display: none
                    // This keeps the element in the layout but makes it invisible
-                   textSpan.style.visibility = "hidden";
+                   textSpan.setCssStyles({ visibility: "hidden" });
                    // Remember which text span we hid for this node
                    hiddenTextSpans.set(node, textSpan);
                  }
@@ -1084,7 +1108,7 @@ export class XMindView extends FileView {
               const textSpan = hiddenTextSpans.get(node);
                if (textSpan instanceof HTMLElement) {
                  // Restore visibility
-                 textSpan.style.visibility = "visible";
+                 textSpan.setCssStyles({ visibility: "visible" });
                }
             }
           }
@@ -1156,11 +1180,8 @@ export class XMindView extends FileView {
       );
       this.isDirty = false;
     } catch (err) {
-      new Notice(
-        `XMinder: Failed to save "${this.file?.name}": ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      new Notice(i18n.t().notices.saveFailed.replace("{error}", errorMsg));
     }
   }
 
@@ -1188,9 +1209,9 @@ export class XMindView extends FileView {
     this.contentEl.empty();
     const el = document.createElement("div");
     el.className = "xmind-error";
-    el.textContent = `XMinder Error: ${msg}`;
+    el.textContent = i18n.t().notices.error.replace("{error}", msg);
     this.contentEl.appendChild(el);
-    new Notice(`XMinder: ${msg}`);
+    new Notice(i18n.t().notices.error.replace("{error}", msg));
   }
 }
 

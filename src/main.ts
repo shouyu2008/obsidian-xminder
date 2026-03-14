@@ -12,6 +12,7 @@ import { XMindSettingTab, DEFAULT_SETTINGS } from "./settings";
 import type { XMindPluginSettings } from "./settings";
 import { serializeXMind } from "./xmind/serializer";
 import { parseXMind } from "./xmind/parser";
+import { i18n } from "./i18n";
 
 // Register a custom icon for XMind files (SVG brain/mindmap icon)
 const XMIND_ICON = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -34,49 +35,31 @@ export default class XMindPlugin extends Plugin {
   settings!: XMindPluginSettings;
 
   async onload(): Promise<void> {
-    // Load settings first
+    i18n.init(this.app);
     await this.loadSettings();
 
-    // Register custom icon
     addIcon("xmind-icon", XMIND_ICON);
 
-    // -------------------------------------------------------------------------
-    // 1. Register .xmind file extension
-    //    This makes .xmind files visible in the file explorer and opens them
-    //    with our custom view when double-clicked.
-    // -------------------------------------------------------------------------
     this.registerExtensions(["xmind"], XMIND_VIEW_TYPE);
 
-    // -------------------------------------------------------------------------
-    // 2. Register the XMind view
-    // -------------------------------------------------------------------------
     this.registerView(
       XMIND_VIEW_TYPE,
       (leaf: WorkspaceLeaf) => new XMindView(leaf, this)
     );
 
-    // -------------------------------------------------------------------------
-    // 3. Register Markdown post processor for ![[]] and [[]] embeds
-    // -------------------------------------------------------------------------
     registerEmbedProcessor(this);
 
-    // -------------------------------------------------------------------------
-    // 4. Register commands
-    // -------------------------------------------------------------------------
-
-    // Command: Create a new XMind file in the vault root
     this.addCommand({
       id: "create-new-xmind",
-      name: "Create new XMind file",
+      name: i18n.t().commands.createNewXMind,
       callback: async () => {
         await this.createNewXMindFile();
       },
     });
 
-    // Command: Export current XMind view as Markdown outline
     this.addCommand({
       id: "export-xmind-as-markdown",
-      name: "Export XMind as Markdown outline",
+      name: i18n.t().commands.exportAsMarkdown,
       checkCallback: (checking: boolean) => {
         const view = this.getActiveXMindView();
         if (!view) return false;
@@ -90,10 +73,9 @@ export default class XMindPlugin extends Plugin {
       },
     });
 
-    // Command: Fit diagram to view
     this.addCommand({
       id: "xmind-fit-to-view",
-      name: "Fit XMind diagram to view",
+      name: i18n.t().commands.fitToView,
       checkCallback: (checking: boolean) => {
         const view = this.getActiveXMindView();
         if (!view) return false;
@@ -104,10 +86,9 @@ export default class XMindPlugin extends Plugin {
       },
     });
 
-    // Command: Save current XMind file
     this.addCommand({
       id: "xmind-save",
-      name: "Save XMind file",
+      name: i18n.t().commands.saveFile,
       checkCallback: (checking: boolean) => {
         const view = this.getActiveXMindView();
         if (!view) return false;
@@ -118,9 +99,6 @@ export default class XMindPlugin extends Plugin {
       },
     });
 
-    // -------------------------------------------------------------------------
-    // 5. File menu: right-click on .xmind files in explorer
-    // -------------------------------------------------------------------------
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, abstractFile) => {
         if (!(abstractFile instanceof TFile)) return;
@@ -129,10 +107,9 @@ export default class XMindPlugin extends Plugin {
         if (this.settings.showOpenAsXMind) {
           menu.addItem((item) => {
             item
-              .setTitle("Open as XMind")
+              .setTitle(i18n.t().menus.openWithXMind)
               .setIcon("xmind-icon")
               .onClick(() => {
-                // Open with external XMind application
                 const app = this.app as { openWithDefaultApp?: (path: string) => void };
                 app.openWithDefaultApp?.(abstractFile.path);
               });
@@ -141,7 +118,7 @@ export default class XMindPlugin extends Plugin {
 
         menu.addItem((item) => {
           item
-            .setTitle("Export as Markdown outline")
+            .setTitle(i18n.t().menus.exportAsMarkdown)
             .setIcon("file-text")
             .onClick(async () => {
               await this.exportFileAsMarkdown(abstractFile);
@@ -150,9 +127,6 @@ export default class XMindPlugin extends Plugin {
       })
     );
 
-    // -------------------------------------------------------------------------
-    // 6. Settings tab
-    // -------------------------------------------------------------------------
     this.addSettingTab(new XMindSettingTab(this.app, this));
   }
 
@@ -208,13 +182,12 @@ export default class XMindPlugin extends Plugin {
     return null;
   }
 
-  /** Create a new blank XMind file and open it */
   async createNewXMindFile(): Promise<void> {
-    // Find a unique filename
-    let name = "New Mind Map";
+    const t = i18n.t();
+    let name = t.defaults.newMindMap;
     let idx = 1;
     while (this.app.vault.getAbstractFileByPath(normalizePath(`${name}.xmind`))) {
-      name = `New Mind Map ${idx++}`;
+      name = `${t.defaults.newMindMap} ${idx++}`;
     }
     const path = normalizePath(`${name}.xmind`);
 
@@ -222,15 +195,15 @@ export default class XMindPlugin extends Plugin {
       sheets: [{
         rootTopic: {
           id: Math.random().toString(36).slice(2, 10),
-          title: "Central Topic",
+          title: t.defaults.centralTopic,
           children: [
             {
               id: Math.random().toString(36).slice(2, 10),
-              title: "Main Topic 1",
+              title: t.defaults.mainTopic1,
             },
             {
               id: Math.random().toString(36).slice(2, 10),
-              title: "Main Topic 2",
+              title: t.defaults.mainTopic2,
             },
           ],
         },
@@ -242,27 +215,21 @@ export default class XMindPlugin extends Plugin {
       const buffer = await serializeXMind(emptyData);
       await this.app.vault.adapter.writeBinary(path, buffer);
 
-      // Trigger vault refresh so the file appears in explorer
       const newFile = this.app.vault.getAbstractFileByPath(path);
       if (newFile instanceof TFile) {
         await this.openXMindFile(newFile);
       } else {
-        // Wait briefly for vault to index the new file
-        // @ts-ignore - setTimeout is available in browser environment
-        const setTimeoutFn = (typeof window !== 'undefined' && window.setTimeout) ? window.setTimeout.bind(window) : (fn: () => void, ms: number) => fn();
+        const setTimeoutFn = (typeof window !== 'undefined' && window.setTimeout) ? window.setTimeout.bind(window) : (fn: () => void, _ms: number) => fn();
         setTimeoutFn(() => {
           const f = this.app.vault.getAbstractFileByPath(path);
           if (f instanceof TFile) void this.openXMindFile(f);
         }, 200);
       }
 
-      new Notice(`Created ${name}.xmind`);
+      new Notice(t.notices.created.replace("{name}", name));
     } catch (err) {
-      new Notice(
-        `XMinder: Failed to create file: ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      new Notice(t.notices.createFailed.replace("{error}", errorMsg));
     }
   }
 
@@ -287,29 +254,27 @@ export default class XMindPlugin extends Plugin {
         normalizePath(file.path)
       );
       const multiSheet = await parseXMind(buffer);
+      const t = i18n.t();
       const md = multiSheet.sheets.map((sheet, i) => {
-        const prefix = multiSheet.sheets.length > 1 ? `# ${sheet.title || `Sheet ${i + 1}`}\n\n` : "";
+        const prefix = multiSheet.sheets.length > 1 ? `# ${sheet.title || `${t.defaults.canvas} ${i + 1}`}\n\n` : "";
         return prefix + xmindNodeToMarkdown(sheet.rootTopic, 0);
       }).join("\n\n");
       this.exportMarkdownToClipboard(md);
     } catch (err) {
-      new Notice(
-        `XMinder: Failed to export "${file.name}": ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      new Notice(i18n.t().notices.exportFailed.replace("{name}", file.name).replace("{error}", errorMsg));
     }
   }
 
-  /** Copy markdown text to clipboard and notify */
   private exportMarkdownToClipboard(md: string): void {
-    // @ts-ignore - window and navigator are available in browser environment
+    const t = i18n.t();
     const navigator = typeof window !== 'undefined' ? window.navigator : null;
     if (navigator?.clipboard) {
       navigator.clipboard.writeText(md).then(() => {
-        new Notice("XMinder: Markdown outline copied to clipboard.");
+        new Notice(t.notices.copiedToClipboard);
       }).catch((err) => {
-        new Notice(`XMinder: Failed to copy to clipboard: ${err instanceof Error ? err.message : String(err)}`);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        new Notice(t.notices.copyFailed.replace("{error}", errorMsg));
       });
     }
   }

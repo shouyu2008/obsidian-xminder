@@ -1,12 +1,10 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type XMindPlugin from "./main";
+import { i18n } from "./i18n";
 
 export interface XMindPluginSettings {
-  /** Auto-save debounce delay in milliseconds */
   autoSaveDelay: number;
-  /** Height of embedded mind map previews in pixels */
   embedHeight: number;
-  /** Show "Open as XMind" in file context menu (for users with XMind app installed) */
   showOpenAsXMind: boolean;
 }
 
@@ -26,20 +24,16 @@ export class XMindSettingTab extends PluginSettingTab {
 
   display(): void {
     const { containerEl } = this;
+    const t = i18n.t();
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("XMinder Preferences")
+      .setName(t.settings.title)
       .setHeading();
 
-    // -----------------------------------------------------------------------
-    // Auto-save delay
-    // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Auto-save Delay")
-      .setDesc(
-        "Time (in milliseconds) to wait after the last edit before automatically saving the .xmind file. Set to 0 to disable auto-save."
-      )
+      .setName(t.settings.autoSaveDelay)
+      .setDesc(t.settings.autoSaveDelayDesc)
       .addSlider((slider) =>
         slider
           .setLimits(0, 5000, 100)
@@ -53,7 +47,7 @@ export class XMindSettingTab extends PluginSettingTab {
       .addExtraButton((btn) =>
         btn
           .setIcon("reset")
-          .setTooltip("Reset to default (500ms)")
+          .setTooltip(t.settings.resetDefaultMs.replace("{ms}", "500"))
           .onClick(async () => {
             this.plugin.settings.autoSaveDelay = DEFAULT_SETTINGS.autoSaveDelay;
             await this.plugin.saveSettings();
@@ -61,14 +55,9 @@ export class XMindSettingTab extends PluginSettingTab {
           })
       );
 
-    // -----------------------------------------------------------------------
-    // Embed preview height
-    // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Embed preview Height")
-      .setDesc(
-        "Height (in pixels) of the inline mind map preview when using ![[file.xmind]] in a note."
-      )
+      .setName(t.settings.embedHeight)
+      .setDesc(t.settings.embedHeightDesc)
       .addSlider((slider) =>
         slider
           .setLimits(150, 800, 10)
@@ -82,7 +71,7 @@ export class XMindSettingTab extends PluginSettingTab {
       .addExtraButton((btn) =>
         btn
           .setIcon("reset")
-          .setTooltip("Reset to default (320px)")
+          .setTooltip(t.settings.resetDefaultPx.replace("{px}", "320"))
           .onClick(async () => {
             this.plugin.settings.embedHeight = DEFAULT_SETTINGS.embedHeight;
             await this.plugin.saveSettings();
@@ -90,14 +79,9 @@ export class XMindSettingTab extends PluginSettingTab {
           })
       );
 
-    // -----------------------------------------------------------------------
-    // Open as XMind toggle
-    // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Show \"Open as XMind\" Menu")
-      .setDesc(
-        "Show an \"Open as XMind\" option in the file context menu, which opens .xmind files with the external XMind application. Enable this if you have the XMind app installed."
-      )
+      .setName(t.settings.showOpenWithXMind)
+      .setDesc(t.settings.showOpenWithXMindDesc)
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.showOpenAsXMind)
@@ -107,21 +91,18 @@ export class XMindSettingTab extends PluginSettingTab {
           })
       );
 
-    // -----------------------------------------------------------------------
-    // Info section
-    // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Usage")
+      .setName(t.settings.usage)
       .setHeading();
     const info = containerEl.createEl("div", { cls: "xmind-settings-info" });
     info.createEl("p", {
-      text: "Supported syntax in Markdown notes:",
+      text: t.settings.usageDesc,
     });
     const ul = info.createEl("ul");
-    ul.createEl("li").createEl("code", { text: "![[diagram.xmind]]" }).insertAdjacentText("afterend", " — embed an interactive preview");
-    ul.createEl("li").createEl("code", { text: "[[diagram.xmind]]" }).insertAdjacentText("afterend", " — link that opens the XMind view");
+    ul.createEl("li").createEl("code", { text: "![[diagram.xmind]]" }).insertAdjacentText("afterend", ` — ${t.settings.embedInteractivePreview}`);
+    ul.createEl("li").createEl("code", { text: "[[diagram.xmind]]" }).insertAdjacentText("afterend", ` — ${t.settings.linkToOpenXMind}`);
     info.createEl("p", {
-      text: "Double-click any .xmind file in the file explorer to open the interactive mind map editor.",
+      text: t.settings.doubleClickTip,
     });
   }
 }

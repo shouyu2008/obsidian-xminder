@@ -4,6 +4,7 @@ import type { MindElixirInstance } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
 import { xmindDataToMindElixir, XMIND_VIEW_TYPE } from "../views/XMindView";
 import type XMindPlugin from "../main";
+import { i18n } from "../i18n";
 
 // Marker attribute to prevent double-processing
 const PROCESSED_ATTR = "data-xmind-processed";
@@ -426,7 +427,7 @@ async function replaceEmbedWithPreview(
   // Strategy: Hide the original embed and create a new wrapper div next to it
   // This is safe because we're in Reading View which is read-only
   
-  embed.style.display = "none";
+  embed.setCssStyles({ display: "none" });
 
   // Safety check: Remove any existing wrappers to prevent duplicates
   // This handles race conditions where multiple calls might occur
@@ -460,16 +461,18 @@ async function replaceEmbedWithPreview(
 
   // Set proper dimensions for the container
   const height = plugin.settings.embedHeight ?? 400;
-  contentContainer.style.width = "100%";
-  contentContainer.style.height = `${height}px`;
-  contentContainer.style.position = "relative";
+  contentContainer.setCssStyles({
+    width: "100%",
+    height: `${height}px`,
+    position: "relative",
+  });
   
   wrapper.appendChild(contentContainer);
 
   const loading = typeof document !== 'undefined' ? document.createElement("div") : null;
   if (!loading) return;
   loading.className = "xmind-embed-loading";
-  loading.textContent = "Loading XMind...";
+  loading.textContent = i18n.t().embed.loadingXMind;
   contentContainer.appendChild(loading);
 
   try {
@@ -604,15 +607,14 @@ async function replaceEmbedWithPreview(
       void openXMindView(plugin.app, resolvedFile);
     });
     contentContainer.addClass("xmind-embed-clickable");
-    contentContainer.title = `Click to open ${resolvedFile.basename}`;
+    contentContainer.title = i18n.t().embed.clickToOpen.replace("{name}", resolvedFile.basename);
   } catch (err) {
     loading.remove();
     const errorEl = typeof document !== 'undefined' ? document.createElement("div") : null;
     if (!errorEl) return;
     errorEl.className = "xmind-embed-error";
-    errorEl.textContent = `Failed to load "${resolvedFile.name}": ${
-      err instanceof Error ? err.message : String(err)
-    }`;
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    errorEl.textContent = i18n.t().embed.loadFailed.replace("{name}", resolvedFile.name).replace("{error}", errorMsg);
     contentContainer.appendChild(errorEl);
   }
 }
@@ -627,17 +629,19 @@ async function buildMindElixirInContainer(
   plugin: XMindPlugin
 ): Promise<void> {
   // Clear existing content
-  contentContainer.innerHTML = "";
+  contentContainer.replaceChildren();
   
   // Set proper dimensions
   const height = plugin.settings.embedHeight ?? 400;
-  contentContainer.style.width = "100%";
-  contentContainer.style.height = `${height}px`;
-  contentContainer.style.position = "relative";
+  contentContainer.setCssStyles({
+    width: "100%",
+    height: `${height}px`,
+    position: "relative",
+  });
   
   const loading = document.createElement("div");
   loading.className = "xmind-embed-loading";
-  loading.textContent = "Loading XMind...";
+  loading.textContent = i18n.t().embed.loadingXMind;
   contentContainer.appendChild(loading);
   
   try {
@@ -749,14 +753,13 @@ async function buildMindElixirInContainer(
       void openXMindView(plugin.app, resolvedFile);
     });
     contentContainer.addClass("xmind-embed-clickable");
-    contentContainer.title = `Click to open ${resolvedFile.basename}`;
+    contentContainer.title = i18n.t().embed.clickToOpen.replace("{name}", resolvedFile.basename);
   } catch (err) {
     loading.remove();
     const errorEl = document.createElement("div");
     errorEl.className = "xmind-embed-error";
-    errorEl.textContent = `Failed to load "${resolvedFile.name}": ${
-      err instanceof Error ? err.message : String(err)
-    }`;
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    errorEl.textContent = i18n.t().embed.loadFailed.replace("{name}", resolvedFile.name).replace("{error}", errorMsg);
     contentContainer.appendChild(errorEl);
   }
 }

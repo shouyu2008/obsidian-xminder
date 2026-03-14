@@ -6,6 +6,7 @@ import type {
   XMindContentJsonSheet,
   XMindContentJsonTopic,
 } from "./types";
+import { i18n } from "../i18n";
 
 /**
  * Parse a .xmind file (ArrayBuffer) into internal format with all sheets.
@@ -49,16 +50,17 @@ function parseContentJson(raw: string): XMindMultiSheetData {
     const parsed = JSON.parse(raw) as unknown;
     rawSheets = Array.isArray(parsed) ? (parsed as XMindContentJsonSheet[]) : [(parsed as XMindContentJsonSheet)];
   } catch {
-    throw new Error("Failed to parse content.json: invalid JSON.");
+    throw new Error(i18n.t().parser.parseContentJsonFailed);
   }
 
   if (rawSheets.length === 0) {
-    throw new Error("content.json contains no sheets.");
+    throw new Error(i18n.t().parser.noSheetInContentJson);
   }
 
+  const t = i18n.t();
   const sheets: XMindData[] = rawSheets.map((sheet) => ({
     rootTopic: mapJsonTopic(sheet.rootTopic),
-    title: sheet.title ?? sheet.rootTopic?.title ?? "Mind Map",
+    title: sheet.title ?? sheet.rootTopic?.title ?? t.defaults.mindMap,
     theme: extractThemeName(sheet.theme),
   }));
 
@@ -115,9 +117,7 @@ function mapJsonTopic(topic: XMindContentJsonTopic): XMindNode {
     if (props["background-color"]) node.style.background = props["background-color"];
     if (props["color"]) node.style.color = props["color"];
     if (props["font-size"]) node.style.fontSize = parseInt(props["font-size"], 10) || undefined;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     if (props["font-weight"] === "bold") node.style.fontWeight = "bold";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     if (props["font-style"] === "italic") node.style.fontStyle = "italic";
     if (props["border-color"]) node.style.border = props["border-color"];
   }
@@ -143,12 +143,12 @@ function parseContentXml(raw: string): XMindMultiSheetData {
     const parser = new DOMParser();
     doc = parser.parseFromString(raw, "text/xml");
   } catch {
-    throw new Error("Failed to parse content.xml.");
+    throw new Error(i18n.t().parser.parseContentXmlFailed);
   }
 
   const parseError = doc.querySelector("parsererror");
   if (parseError) {
-    throw new Error(`Invalid content.xml: ${parseError.textContent}`);
+    throw new Error(i18n.t().parser.contentXmlInvalid.replace("{error}", parseError.textContent ?? ""));
   }
 
   // Find all sheet elements

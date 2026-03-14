@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import type { XMindMultiSheetData, XMindNode, XMindContentJsonTopic } from "./types";
+import { i18n } from "../i18n";
 
 /**
  * Serialize XMindMultiSheetData back to a .xmind file (ArrayBuffer).
@@ -35,10 +36,11 @@ export async function serializeXMind(data: XMindMultiSheetData): Promise<ArrayBu
 // ---------------------------------------------------------------------------
 
 function buildContentJson(data: XMindMultiSheetData): object[] {
+  const t = i18n.t();
   return data.sheets.map((sheet, i) => ({
     id: generateId(),
     class: "sheet",
-    title: sheet.title ?? `Sheet ${i + 1}`,
+    title: sheet.title ?? `${t.defaults.canvas} ${i + 1}`,
     rootTopic: mapNodeToJsonTopic(sheet.rootTopic),
   }));
 }
