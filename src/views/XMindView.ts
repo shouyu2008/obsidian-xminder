@@ -1061,6 +1061,12 @@ export class XMindView extends FileView {
 
     // Listen for any operation (edit/add/remove/move) → trigger auto-save
     this.mind.bus.addListener("operation", (_info) => {
+      // CRITICAL: Ensure root node still has parent=true for drag-to-root support
+      // mind-elixir's drag validation may reset or check this during operations
+      if (this.mind?.nodeData) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        (this.mind.nodeData as any).parent = true;
+      }
       this.scheduleSave();
     });
 
