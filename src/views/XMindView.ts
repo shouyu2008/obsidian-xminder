@@ -10,13 +10,19 @@ import MindElixir from "mind-elixir";
 import type { MindElixirData, MindElixirInstance, NodeObj } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
 import { serializeXMind } from "../xmind/serializer";
-import type { XMindNode, XMindData, XMindMultiSheetData } from "../xmind/types";
+import type { XMindNode, XMindData } from "../xmind/types";
 import type XMindPlugin from "../main";
 
 export const XMIND_VIEW_TYPE = "xmind-view";
 
 // Debounce delay for auto-save (ms)
 const AUTO_SAVE_DELAY = 500;
+
+// Type for mind-elixir instance with custom properties
+interface ExtendedMindElixirInstance {
+  linkDiv?: (this: MindElixirInstance) => void;
+  nodeData?: NodeObj & { parent?: boolean };
+}
 
 // ---------------------------------------------------------------------------
 // Custom absolute-position layout engine
@@ -60,17 +66,13 @@ function buildLayoutTree(
   // align-items, causing me-tpc (display:block) to fill the stretched height.
   const savedRootTpcW = rootTpc.style.width;
   const savedRootTpcH = rootTpc.style.height;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-  rootTpc.style.width = "fit-content";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-  rootTpc.style.height = "fit-content";
+  rootTpc.addClass("xmind-fit-content");
   void rootTpc.offsetHeight; // force reflow
   const rootW = rootTpc.offsetWidth;
   const rootH = rootTpc.offsetHeight;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-  rootTpc.style.width = savedRootTpcW;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-  rootTpc.style.height = savedRootTpcH;
+  rootTpc.removeClass("xmind-fit-content");
+  if (savedRootTpcW) rootTpc.style.width = savedRootTpcW;
+  if (savedRootTpcH) rootTpc.style.height = savedRootTpcH;
 
   function buildChildren(
     meChildren: HTMLElement,
@@ -259,52 +261,17 @@ function assignPositions(
   }
 }
 
-/** Apply computed x, y to each me-tpc as position:absolute within me-nodes */
-function applyPositions(nodes: LayoutNode[]): void {
-  for (const node of nodes) {
-    const tpc = node.tpc;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    tpc.style.position = "absolute";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    tpc.style.left = `${node.x}px`;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    tpc.style.top = `${node.y}px`;
-    // Detach from flow
-    const meParent = node.parent;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    meParent.style.position = "absolute";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    meParent.style.left = `${node.x}px`;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    meParent.style.top = `${node.y}px`;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    meParent.style.padding = "0";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    meParent.style.margin = "0";
-    if (node.children.length > 0) {
-      applyPositions(node.children);
-    }
-  }
-}
-
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function makeSvg(): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("overflow", "visible");
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   svg.style.position = "absolute";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   svg.style.top = "0";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   svg.style.left = "0";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   svg.style.width = "100%";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   svg.style.height = "100%";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   svg.style.pointerEvents = "none";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   svg.style.zIndex = "-1";
   return svg;
 }
@@ -342,7 +309,6 @@ function drawConnectors(
   // Translated root
   const rootLeft = localRootX + offsetX;
   const rootTop = localRootY + offsetY;
-  const rootCX = rootLeft + rootW / 2;
   const rootCY = rootTop + rootH / 2;
 
   let colorIdx = 0;
@@ -424,55 +390,38 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   if (oldCustomSvg) oldCustomSvg.remove();
 
   nodesEl.querySelectorAll("me-main").forEach((el) => {
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     (el as HTMLElement).style.display = "";
   });
   nodesEl.querySelectorAll("me-wrapper").forEach((el) => {
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     (el as HTMLElement).style.display = "";
   });
   nodesEl.querySelectorAll("me-children").forEach((el) => {
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     (el as HTMLElement).style.display = "";
   });
   nodesEl.querySelectorAll("me-parent").forEach((el) => {
     const e = el as HTMLElement;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.position = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.left = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.top = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.padding = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.margin = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.direction = "";
   });
   const meRootReset = nodesEl.querySelector("me-root") as HTMLElement;
   if (meRootReset) {
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     meRootReset.style.position = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     meRootReset.style.left = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     meRootReset.style.top = "";
   }
   // Reset me-nodes to its original CSS state (flex layout for measurement)
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   nodesEl.style.cssText = "";
 
   // Also reset me-epd elements that may have been styled
   nodesEl.querySelectorAll("me-epd").forEach((el) => {
     const e = el as HTMLElement;
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.position = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.top = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.left = "";
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     e.style.right = "";
   });
 
@@ -533,15 +482,12 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   // 5. Collapse layout containers & apply absolute positions
   // -----------------------------------------------------------------------
   nodesEl.querySelectorAll("me-main").forEach((el) => {
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     (el as HTMLElement).style.display = "contents";
   });
   nodesEl.querySelectorAll("me-wrapper").forEach((el) => {
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     (el as HTMLElement).style.display = "contents";
   });
   nodesEl.querySelectorAll("me-children").forEach((el) => {
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     (el as HTMLElement).style.display = "contents";
   });
 
@@ -549,11 +495,8 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   // rootW/rootH are measured from me-root (not me-tpc), so we position
   // me-root directly — no tpc offset adjustment needed.
   const meRootEl = root.meRoot;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   meRootEl.style.position = "absolute";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   meRootEl.style.left = `${Math.round(tRootX)}px`;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   meRootEl.style.top = `${Math.round(tRootY)}px`;
 
   // Position all branch nodes
@@ -562,34 +505,22 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
       const tx = node.x + offsetX;
       const ty = node.y + offsetY;
       const meParent = node.parent;
-      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
       meParent.style.position = "absolute";
-      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
       meParent.style.left = `${Math.round(tx)}px`;
-      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
       meParent.style.top = `${Math.round(ty)}px`;
-      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
       meParent.style.padding = "0";
-      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
       meParent.style.margin = "0";
-      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
       meParent.style.direction = "ltr";
       // expand button positioning
       const epd = meParent.querySelector("me-epd");
       if (epd instanceof HTMLElement) {
-        // eslint-disable-next-line obsidianmd/no-static-styles-assignment
         epd.style.position = "absolute";
-        // eslint-disable-next-line obsidianmd/no-static-styles-assignment
         epd.style.top = `${(node.height - 18) / 2}px`;
-        // eslint-disable-next-line obsidianmd/no-static-styles-assignment
         epd.style.left = "";
-        // eslint-disable-next-line obsidianmd/no-static-styles-assignment
         epd.style.right = "";
         if (node.direction === "lhs") {
-          // eslint-disable-next-line obsidianmd/no-static-styles-assignment
           epd.style.left = "-10px";
         } else {
-          // eslint-disable-next-line obsidianmd/no-static-styles-assignment
           epd.style.right = "-10px";
         }
       }
@@ -616,15 +547,10 @@ function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj }): void {
   const nodesLeft = CANVAS_CENTER - rootCXInNodes;
   const nodesTop = CANVAS_CENTER - rootCYInNodes;
 
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   nodesEl.style.position = "absolute";
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   nodesEl.style.left = `${Math.round(nodesLeft)}px`;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   nodesEl.style.top = `${Math.round(nodesTop)}px`;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   nodesEl.style.width = `${Math.round(contentW + PAD * 2)}px`;
-  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
   nodesEl.style.height = `${Math.round(contentH + PAD * 2)}px`;
 
   // -----------------------------------------------------------------------
@@ -808,8 +734,8 @@ export class XMindView extends FileView {
       this.mind = new MindElixir(options);
 
       // Inject custom linkDiv before init() so every layout call uses it
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-      (this.mind as any).linkDiv = customLinkDiv.bind(this.mind);
+      const extendedMind = this.mind as MindElixirInstance & ExtendedMindElixirInstance;
+      extendedMind.linkDiv = customLinkDiv.bind(this.mind);
 
       this.mind.init(data);
 
@@ -824,9 +750,9 @@ export class XMindView extends FileView {
       // because root.nodeObj.parent is undefined. We fix this by directly
       // setting parent=true on the root node. This is simpler and more reliable
       // than using a Proxy which can cause state inconsistencies.
-      if (this.mind.nodeData) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-        (this.mind.nodeData as any).parent = true;
+      if (extendedMind.nodeData) {
+        const nodeData = extendedMind.nodeData as unknown as Record<string, unknown>;
+        nodeData.parent = true;
       }
     } catch (initErr) {
       this.showError(initErr instanceof Error ? initErr.message : String(initErr));
@@ -855,8 +781,9 @@ export class XMindView extends FileView {
           const btn = document.createElement("button");
           btn.className = "xmind-toolbar-btn";
           btn.title = title;
-          // eslint-disable-next-line @microsoft/sdl/no-inner-html
-          btn.innerHTML = icon;
+          const iconWrapper = document.createElement("div");
+          iconWrapper.innerHTML = icon;
+          btn.appendChild(iconWrapper);
           return btn;
         };
 
@@ -880,7 +807,6 @@ export class XMindView extends FileView {
         helpBtn.addEventListener("click", () => {
           const helpEl = container.querySelector(".xmind-help-panel");
           if (helpEl instanceof HTMLElement) {
-            // eslint-disable-next-line obsidianmd/no-static-styles-assignment
             helpEl.style.display = helpEl.style.display === "none" ? "block" : "none";
           }
         });
@@ -891,20 +817,35 @@ export class XMindView extends FileView {
         // Help panel
         const helpPanel = document.createElement("div");
         helpPanel.className = "xmind-help-panel";
-        // eslint-disable-next-line obsidianmd/no-static-styles-assignment
         helpPanel.style.display = "none";
-        // eslint-disable-next-line @microsoft/sdl/no-inner-html
-        helpPanel.innerHTML = `
-          <div class="xmind-help-title">Keyboard Shortcuts</div>
-          <table class="xmind-help-table">
-            <tr><td><kbd>Tab</kbd></td><td>Add child node</td></tr>
-            <tr><td><kbd>Enter</kbd></td><td>Add sibling node</td></tr>
-            <tr><td><kbd>Ctrl+C</kbd></td><td>Copy</td></tr>
-            <tr><td><kbd>Ctrl+V</kbd></td><td>Paste</td></tr>
-            <tr><td><kbd>Ctrl+Z</kbd></td><td>Undo</td></tr>
-            <tr><td><kbd>Ctrl+S</kbd></td><td>Save</td></tr>
-          </table>
-        `;
+        
+        const helpTitle = document.createElement("div");
+        helpTitle.className = "xmind-help-title";
+        helpTitle.textContent = "Keyboard Shortcuts";
+        helpPanel.appendChild(helpTitle);
+        
+        const helpTable = document.createElement("table");
+        helpTable.className = "xmind-help-table";
+        const shortcuts = [
+          ["Tab", "Add child node"],
+          ["Enter", "Add sibling node"],
+          ["Ctrl+C", "Copy"],
+          ["Ctrl+V", "Paste"],
+          ["Ctrl+Z", "Undo"],
+          ["Ctrl+S", "Save"],
+        ];
+        
+        for (const [key, desc] of shortcuts) {
+          const row = helpTable.insertRow();
+          const keyCell = row.insertCell();
+          const descCell = row.insertCell();
+          const keybd = document.createElement("kbd");
+          keybd.textContent = key;
+          keyCell.appendChild(keybd);
+          descCell.textContent = desc;
+        }
+        
+        helpPanel.appendChild(helpTable);
         container.appendChild(helpPanel);
 
         // Click anywhere outside help panel to close it
@@ -989,8 +930,10 @@ export class XMindView extends FileView {
 
         dragBtn.addEventListener("click", () => {
           panEnabled = !panEnabled;
-          // eslint-disable-next-line @microsoft/sdl/no-inner-html
-          dragBtn.innerHTML = panEnabled ? ICON_POINTER : ICON_HAND;
+          dragBtn.innerHTML = "";
+          const iconWrapper = document.createElement("div");
+          iconWrapper.innerHTML = panEnabled ? ICON_POINTER : ICON_HAND;
+          dragBtn.appendChild(iconWrapper);
           dragBtn.title = panEnabled ? "切换为指针模式" : "切换为拖动画布";
           mapEl.style.cursor = panEnabled ? "grab" : "";
         });
@@ -1002,10 +945,9 @@ export class XMindView extends FileView {
           isPanning = true;
           startX = e.clientX;
           startY = e.clientY;
-          scrollX = container.scrollLeft;
-          scrollY = container.scrollTop;
-          // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-          mapEl.style.cursor = "grabbing";
+           scrollX = container.scrollLeft;
+           scrollY = container.scrollTop;
+           mapEl.style.cursor = "grabbing";
           e.preventDefault();
           e.stopPropagation();
         }, true);
@@ -1064,8 +1006,8 @@ export class XMindView extends FileView {
       // CRITICAL: Ensure root node still has parent=true for drag-to-root support
       // mind-elixir's drag validation may reset or check this during operations
       if (this.mind?.nodeData) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-        (this.mind.nodeData as any).parent = true;
+        const nodeData = this.mind.nodeData as unknown as Record<string, unknown>;
+        nodeData.parent = true;
       }
       this.scheduleSave();
     });
@@ -1125,14 +1067,13 @@ export class XMindView extends FileView {
               const meParent = node.parentElement?.closest("me-parent");
               if (meParent instanceof HTMLElement) {
                 const textSpan = meParent.querySelector("span.text");
-                if (textSpan instanceof HTMLElement) {
-                  // Use visibility: hidden instead of display: none
-                  // This keeps the element in the layout but makes it invisible
-                  // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-                  textSpan.style.visibility = "hidden";
-                  // Remember which text span we hid for this node
-                  hiddenTextSpans.set(node, textSpan);
-                }
+                 if (textSpan instanceof HTMLElement) {
+                   // Use visibility: hidden instead of display: none
+                   // This keeps the element in the layout but makes it invisible
+                   textSpan.style.visibility = "hidden";
+                   // Remember which text span we hid for this node
+                   hiddenTextSpans.set(node, textSpan);
+                 }
               }
             }
           }
@@ -1141,11 +1082,10 @@ export class XMindView extends FileView {
             if (node instanceof HTMLElement && node.id === "input-box") {
               // Input-box removed, restore the text span
               const textSpan = hiddenTextSpans.get(node);
-              if (textSpan instanceof HTMLElement) {
-                // Restore visibility
-                // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-                textSpan.style.visibility = "visible";
-              }
+               if (textSpan instanceof HTMLElement) {
+                 // Restore visibility
+                 textSpan.style.visibility = "visible";
+               }
             }
           }
         }

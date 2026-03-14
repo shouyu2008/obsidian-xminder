@@ -12,7 +12,6 @@ import { XMindSettingTab, DEFAULT_SETTINGS } from "./settings";
 import type { XMindPluginSettings } from "./settings";
 import { serializeXMind } from "./xmind/serializer";
 import { parseXMind } from "./xmind/parser";
-import type { XMindData } from "./xmind/types";
 
 // Register a custom icon for XMind files (SVG brain/mindmap icon)
 const XMIND_ICON = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -250,10 +249,8 @@ export default class XMindPlugin extends Plugin {
       } else {
         // Wait briefly for vault to index the new file
         // @ts-ignore - setTimeout is available in browser environment
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
         const setTimeoutFn = (typeof window !== 'undefined' && window.setTimeout) ? window.setTimeout.bind(window) : (fn: () => void, ms: number) => fn();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        setTimeoutFn(async () => {
+        setTimeoutFn(() => {
           const f = this.app.vault.getAbstractFileByPath(path);
           if (f instanceof TFile) void this.openXMindFile(f);
         }, 200);

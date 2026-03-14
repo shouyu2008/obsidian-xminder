@@ -29,14 +29,14 @@ export class XMindSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("XMinder preferences")
+      .setName("XMinder Preferences")
       .setHeading();
 
     // -----------------------------------------------------------------------
     // Auto-save delay
     // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Auto-save delay")
+      .setName("Auto-save Delay")
       .setDesc(
         "Time (in milliseconds) to wait after the last edit before automatically saving the .xmind file. Set to 0 to disable auto-save."
       )
@@ -65,7 +65,7 @@ export class XMindSettingTab extends PluginSettingTab {
     // Embed preview height
     // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Embed preview height")
+      .setName("Embed preview Height")
       .setDesc(
         "Height (in pixels) of the inline mind map preview when using ![[file.xmind]] in a note."
       )
@@ -94,7 +94,7 @@ export class XMindSettingTab extends PluginSettingTab {
     // Open as XMind toggle
     // -----------------------------------------------------------------------
     new Setting(containerEl)
-      .setName("Show \"Open as XMind\" menu")
+      .setName("Show \"Open as XMind\" Menu")
       .setDesc(
         "Show an \"Open as XMind\" option in the file context menu, which opens .xmind files with the external XMind application. Enable this if you have the XMind app installed."
       )

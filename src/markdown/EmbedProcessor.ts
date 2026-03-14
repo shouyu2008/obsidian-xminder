@@ -29,7 +29,7 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // This runs for every markdown block rendered in Reading View
   // Live Preview (CodeMirror) does not trigger MarkdownPostProcessor
   plugin.registerMarkdownPostProcessor(
-    async (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+    (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
       // Only process in Reading View to avoid any modifications in Live Preview
       const isReadingView = el.closest(".markdown-reading-view");
       console.log("[XMinder] MarkdownPostProcessor called, isReadingView:", !!isReadingView);
@@ -222,8 +222,8 @@ function findSourcePath(el: HTMLElement, plugin: XMindPlugin): string {
   // Strategy 2: Check active leaf (fallback)
   const activeLeaf = plugin.app.workspace.activeLeaf;
   if (activeLeaf) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const file = (activeLeaf.view as any)?.file as TFile | undefined;
+    const view = activeLeaf.view as { file?: TFile };
+    const file = view?.file;
     if (file) return file.path;
   }
 
