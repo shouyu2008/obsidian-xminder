@@ -94,10 +94,10 @@ mindmap
 
 | Command | Description |
 |---------|-------------|
-| `XMinder: Create new XMind file` | Creates a new blank `.xmind` file and opens it |
-| `XMinder: Export XMind as Mermaid mindmap` | Exports as Mermaid mindmap to clipboard (can be pasted directly into notes for rendering) |
-| `XMinder: Fit XMind diagram to view` | Resets zoom and centers the diagram |
-| `XMinder: Save XMind file` | Saves immediately |
+| `XMinder: Create New XMind File` | Creates a new blank `.xmind` file and opens it |
+| `XMinder: Export XMind as Mermaid Mindmap` | Exports as Mermaid mindmap to clipboard (can be pasted directly into notes for rendering) |
+| `XMinder: Fit XMind View` | Resets zoom and centers the diagram |
+| `XMinder: Save XMind File` | Saves immediately |
 
 #### Settings
 
@@ -105,9 +105,9 @@ Open *Settings → Community Plugins → XMinder*:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Auto-save delay | `500` ms | Debounce delay before auto-saving. Set to `0` to disable. |
-| Embed preview height | `320` px | Height of the `![[]]` inline preview block. |
-| Show "Open as XMind" menu | On | Show the "Open as XMind" option in the file context menu. |
+| Auto-save Delay | `500` ms | Time to wait after the last edit (milliseconds) before auto-saving the .xmind file. Set to `0` to disable auto-save. |
+| Embed Preview Height | `320` px | Height of embedded mind map previews (in pixels) when using ![[file.xmind]] in notes. |
+| Show "Open with XMind" menu | On | Show "Open with XMind" in the file context menu to open .xmind files with the external XMind application. Recommended if XMind app is installed. |
 
 ---
 

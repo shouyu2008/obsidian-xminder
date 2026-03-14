@@ -94,10 +94,10 @@ mindmap
 
 | 命令 | 说明 |
 |------|------|
-| `XMinder: Create new XMind file` | 创建新的空白 `.xmind` 文件并打开 |
-| `XMinder: Export XMind as Mermaid mindmap` | 导出为 Mermaid 脑图到剪贴板（可直接粘贴到笔记中渲染） |
-| `XMinder: Fit XMind diagram to view` | 重置缩放并居中 |
-| `XMinder: Save XMind file` | 立即保存 |
+| `XMinder: 新建 XMind 文件` | 创建新的空白 `.xmind` 文件并打开 |
+| `XMinder: 导出 XMind 为 Mermaid 脑图` | 导出为 Mermaid 脑图到剪贴板（可直接粘贴到笔记中渲染） |
+| `XMinder: 适配 XMind 视图` | 重置缩放并居中 |
+| `XMinder: 保存 XMind 文件` | 立即保存 |
 
 #### 插件设置
 
@@ -105,9 +105,9 @@ mindmap
 
 | 设置项 | 默认值 | 说明 |
 |--------|--------|------|
-| Auto-save delay | `500` ms | 编辑后自动保存延迟。设为 `0` 禁用自动保存。 |
-| Embed preview height | `320` px | `![[]]` 内嵌预览的高度。 |
-| Show "Open as XMind" menu | 开启 | 在右键菜单中显示"Open as XMind"选项。 |
+| 自动保存延迟 | `500` ms | 编辑后自动保存延迟。设为 `0` 禁用自动保存。 |
+| 嵌入预览高度 | `320` px | `![[]]` 内嵌预览的高度。 |
+| 显示"用 XMind 打开"菜单 | 开启 | 在文件右键菜单中显示"用 XMind 打开"，用外部 XMind 应用打开 .xmind 文件。已安装 XMind 应用时建议开启。 |
 
 ---
 
