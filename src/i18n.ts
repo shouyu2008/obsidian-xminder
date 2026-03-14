@@ -12,6 +12,7 @@ interface I18nStrings {
   menus: {
     openWithXMind: string;
     exportAsMarkdown: string;
+    createNewXMind: string;
   };
   defaults: {
     newMindMap: string;
@@ -90,6 +91,7 @@ const zhStrings: I18nStrings = {
   menus: {
     openWithXMind: "用 XMind 打开",
     exportAsMarkdown: "导出为 Mermaid 脑图",
+    createNewXMind: "新建 XMind 脑图",
   },
   defaults: {
     newMindMap: "新建思维导图",
@@ -168,6 +170,7 @@ const enStrings: I18nStrings = {
   menus: {
     openWithXMind: "Open with XMind",
     exportAsMarkdown: "Export as Mermaid Mindmap",
+    createNewXMind: "Create New XMind Mindmap",
   },
   defaults: {
     newMindMap: "New Mind Map",

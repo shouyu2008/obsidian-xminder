@@ -1,6 +1,7 @@
 import {
   Plugin,
   TFile,
+  TFolder,
   WorkspaceLeaf,
   normalizePath,
   Notice,
@@ -101,6 +102,18 @@ export default class XMindPlugin extends Plugin {
 
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, abstractFile) => {
+        if (abstractFile instanceof TFolder) {
+          menu.addItem((item) => {
+            item
+              .setTitle(i18n.t().menus.createNewXMind)
+              .setIcon("xmind-icon")
+              .onClick(async () => {
+                await this.createNewXMindFile(abstractFile);
+              });
+          });
+          return;
+        }
+
         if (!(abstractFile instanceof TFile)) return;
         if (abstractFile.extension.toLowerCase() !== "xmind") return;
 
@@ -182,14 +195,19 @@ export default class XMindPlugin extends Plugin {
     return null;
   }
 
-  async createNewXMindFile(): Promise<void> {
+  async createNewXMindFile(folder?: TFolder): Promise<void> {
     const t = i18n.t();
     let name = t.defaults.newMindMap;
     let idx = 1;
-    while (this.app.vault.getAbstractFileByPath(normalizePath(`${name}.xmind`))) {
+    
+    const basePath = folder ? folder.path : "";
+    let fullPath = normalizePath(basePath ? `${basePath}/${name}.xmind` : `${name}.xmind`);
+    
+    while (this.app.vault.getAbstractFileByPath(fullPath)) {
       name = `${t.defaults.newMindMap} ${idx++}`;
+      fullPath = normalizePath(basePath ? `${basePath}/${name}.xmind` : `${name}.xmind`);
     }
-    const path = normalizePath(`${name}.xmind`);
+    const path = fullPath;
 
     const emptyData = {
       sheets: [{
