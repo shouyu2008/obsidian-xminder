@@ -1413,9 +1413,8 @@ export class XMindView extends FileView {
     if (!data || !data.nodeData) return "";
     
     const title = this.allSheets[this.activeSheetIndex]?.title || "Mind Map";
-    let result = `mindmap\n  root(("${title}"))\n`;
-    result += mindElixirNodeToMermaid(data.nodeData, 0);
-    return result;
+    const mermaidContent = `mindmap\n  root(("${title}"))\n` + mindElixirNodeToMermaid(data.nodeData, 0);
+    return `\`\`\`mermaid\n${mermaidContent}\`\`\``;
   }
 
   /** Fit the diagram to the viewport */

@@ -280,7 +280,8 @@ export default class XMindPlugin extends Plugin {
       const md = multiSheet.sheets.map((sheet, i) => {
         const title = sheet.title || `${t.defaults.canvas} ${i + 1}`;
         const prefix = multiSheet.sheets.length > 1 ? `# ${title}\n\n` : "";
-        return prefix + `mindmap\n  root(("${title}"))\n` + xmindNodeToMarkdown(sheet.rootTopic, 0);
+        const mermaidContent = `mindmap\n  root(("${title}"))\n` + xmindNodeToMarkdown(sheet.rootTopic, 0);
+        return prefix + `\`\`\`mermaid\n${mermaidContent}\`\`\``;
       }).join("\n\n");
       this.exportMarkdownToClipboard(md);
     } catch (err) {
