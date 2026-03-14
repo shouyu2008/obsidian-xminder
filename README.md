@@ -17,9 +17,9 @@ XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as i
 - **Auto-save** — changes are written back to the `.xmind` file after a configurable debounce delay (default 500 ms)
 - **Manual save** — `Ctrl/Cmd + S` saves immediately
 - **Markdown embed** — use `![[diagram.xmind]]` to render a read-only interactive preview inline in any note
-- **Markdown link** — use `[[diagram.xmind]]` to create a clickable link that opens the XMind view
-- **Export to Markdown outline** — export the mind map as a Markdown outline copied to the clipboard
-- **Open with XMind app** — right-click menu option to open `.xmind` files with the external XMind application (configurable in settings)
+- **Markdown link** — use `[[diagram.xmind]]` to create a clickable link that opens XMind view
+- **Export to Mermaid mindmap** — export mind map as Mermaid format copied to clipboard (can be pasted directly into notes for rendering)
+- **Open with XMind app** — right-click menu option to open `.xmind` files with external XMind application (configurable in settings)
 - **Theme follow** — automatically switches between light and dark themes with Obsidian
 - **Responsive layout** — automatically re-fits the view when splitting or resizing panes
 - **XMind format compatibility** — supports both `content.json` (XMind 8+ / ZEN) and legacy `content.xml` formats
@@ -31,6 +31,7 @@ XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as i
 
 - **click** any `.xmind` file in the file explorer
 - **Right-click** a `.xmind` file → *Open as XMind* (opens with external XMind app, configurable)
+- **Right-click** a folder → *Create New XMind Mindmap* (creates a new XMind file in the selected folder)
 - Run the command: `XMinder: Create new XMind file`
 
 #### Embedding in a Markdown note
@@ -41,6 +42,22 @@ XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as i
 
 # Clickable link that opens the XMind view
 [[my-diagram.xmind]]
+```
+
+#### Export to Mermaid Mindmap
+
+The exported Mermaid mindmap format can be pasted directly into notes, and the Mermaid plugin will automatically render it as a visual mind map:
+
+```markdown
+```mermaid
+mindmap
+  root(("Central Topic"))
+    Main Topic 1
+      Subtopic 1
+      Subtopic 2
+    Main Topic 2
+      Subtopic 3
+```
 ```
 
 #### Toolbar
@@ -78,7 +95,7 @@ XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as i
 | Command | Description |
 |---------|-------------|
 | `XMinder: Create new XMind file` | Creates a new blank `.xmind` file and opens it |
-| `XMinder: Export XMind as Markdown outline` | Exports as Markdown outline to clipboard |
+| `XMinder: Export XMind as Mermaid mindmap` | Exports as Mermaid mindmap to clipboard (can be pasted directly into notes for rendering) |
 | `XMinder: Fit XMind diagram to view` | Resets zoom and centers the diagram |
 | `XMinder: Save XMind file` | Saves immediately |
 
