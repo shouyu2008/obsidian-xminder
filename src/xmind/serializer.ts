@@ -15,8 +15,8 @@ export async function serializeXMind(data: XMindMultiSheetData): Promise<ArrayBu
   // Write minimal metadata.json
   const metadata = {
     creator: {
-      name: "obsidian-xminder",
-      version: "1.0.0",
+      name: "shouyu2008",
+      version: "1.0.1",
     },
   };
   zip.file("metadata.json", JSON.stringify(metadata));
