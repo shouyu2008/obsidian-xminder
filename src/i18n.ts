@@ -237,7 +237,10 @@ const enStrings: I18nStrings = {
 };
 
 function getObsidianLocale(app: App): Locale {
-  const lang = (app.vault as unknown as { config?: { locale?: string } }).config?.locale ?? "en";
+  let lang = "en";
+  if (typeof window !== "undefined" && window.localStorage) {
+    lang = window.localStorage.getItem("language") ?? "en";
+  }
   return lang.startsWith("zh") ? "zh" : "en";
 }
 
