@@ -126,6 +126,12 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
           let sibling = embed.nextElementSibling;
           while (sibling) {
             if (sibling.classList.contains("xmind-embed-wrapper")) {
+              const mapContainer = sibling.querySelector(".map-container");
+              const contentContainer = sibling.querySelector(".xmind-embed-container") as HTMLElement | null;
+              
+              if (!mapContainer && contentContainer && contentContainer.children.length === 0) {
+                sibling.remove();
+              }
               break;
             }
             sibling = sibling.nextElementSibling;
