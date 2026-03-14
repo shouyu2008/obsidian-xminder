@@ -117,8 +117,8 @@ function mapJsonTopic(topic: XMindContentJsonTopic): XMindNode {
     if (props["background-color"]) node.style.background = props["background-color"];
     if (props["color"]) node.style.color = props["color"];
     if (props["font-size"]) node.style.fontSize = parseInt(props["font-size"], 10) || undefined;
-    if (props["font-weight"] === "bold") node.style.fontWeight = "bold";
-    if (props["font-style"] === "italic") node.style.fontStyle = "italic";
+    if (props["font-weight"] === "bold") node.style.fontWeight = "bold" as const;
+    if (props["font-style"] === "italic") node.style.fontStyle = "italic" as const;
     if (props["border-color"]) node.style.border = props["border-color"];
   }
 

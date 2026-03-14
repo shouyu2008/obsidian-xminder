@@ -219,10 +219,15 @@ export default class XMindPlugin extends Plugin {
       if (newFile instanceof TFile) {
         await this.openXMindFile(newFile);
       } else {
-        const setTimeoutFn = (typeof window !== 'undefined' && window.setTimeout) ? window.setTimeout.bind(window) : (fn: () => void, _ms: number) => fn();
+        const setTimeoutFn: (fn: TimerHandler, ms: number) => number =
+          (typeof window !== 'undefined' && window.setTimeout)
+            ? window.setTimeout.bind(window)
+            : ((_fn: TimerHandler, _ms: number) => 0);
         setTimeoutFn(() => {
           const f = this.app.vault.getAbstractFileByPath(path);
-          if (f instanceof TFile) void this.openXMindFile(f);
+          if (f instanceof TFile) {
+            void this.openXMindFile(f);
+          }
         }, 200);
       }
 

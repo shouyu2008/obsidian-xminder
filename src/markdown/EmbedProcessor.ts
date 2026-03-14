@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, TFile, normalizePath, App } from "obsidian";
+import { MarkdownPostProcessorContext, TFile, normalizePath, App, MarkdownView } from "obsidian";
 import MindElixir from "mind-elixir";
 import type { MindElixirInstance } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
@@ -83,9 +83,9 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
 
           // Find source path from active view
           let sourcePath = "";
-          const activeLeaf = plugin.app.workspace.activeLeaf;
-          if (activeLeaf) {
-            const file = (activeLeaf.view as { file?: TFile }).file;
+          const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+          if (activeView) {
+            const file = (activeView as { file?: TFile }).file;
             if (file) sourcePath = file.path;
           }
 
@@ -109,37 +109,35 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
   // we periodically scan for embeds with broken mind-elixir instances
   // NOTE: We no longer delete wrappers here - we just log for debugging
   // The cleanupObserver with delayed check handles the actual cleanup
-  if (typeof setInterval !== 'undefined') {
-    setInterval(() => {
-      // Skip during view switching to prevent race conditions
-      if (isViewSwitching) {
-        return;
-      }
-      
-      const readingViews = document.querySelectorAll(".markdown-reading-view");
-      for (const view of Array.from(readingViews)) {
-        const embeds = view.querySelectorAll<HTMLElement>(".internal-embed");
-        for (const embed of Array.from(embeds)) {
-          if (!embed.textContent?.toLowerCase().includes(".xmind")) continue;
-          
-          // Check if this embed has a wrapper with broken mind-elixir
-          let sibling = embed.nextElementSibling;
-          while (sibling) {
-            if (sibling.classList.contains("xmind-embed-wrapper")) {
-              const mapContainer = sibling.querySelector(".map-container");
-              const contentContainer = sibling.querySelector(".xmind-embed-container") as HTMLElement | null;
-              
-              if (!mapContainer && contentContainer && contentContainer.children.length === 0) {
-                sibling.remove();
-              }
-              break;
+  window.setInterval(() => {
+    // Skip during view switching to prevent race conditions
+    if (isViewSwitching) {
+      return;
+    }
+    
+    const readingViews = document.querySelectorAll(".markdown-reading-view");
+    for (const view of Array.from(readingViews)) {
+      const embeds = view.querySelectorAll<HTMLElement>(".internal-embed");
+      for (const embed of Array.from(embeds)) {
+        if (!embed.textContent?.toLowerCase().includes(".xmind")) continue;
+        
+        // Check if this embed has a wrapper with broken mind-elixir
+        let sibling = embed.nextElementSibling;
+        while (sibling) {
+          if (sibling.classList.contains("xmind-embed-wrapper")) {
+            const mapContainer = sibling.querySelector(".map-container");
+            const contentContainer = sibling.querySelector(".xmind-embed-container");
+            
+            if (!mapContainer && contentContainer && contentContainer.children.length === 0) {
+              sibling.remove();
             }
-            sibling = sibling.nextElementSibling;
+            break;
           }
+          sibling = sibling.nextElementSibling;
         }
       }
-    }, 2000); // Check every 2 seconds
-  }
+    }
+  }, 2000); // Check every 2 seconds
 }
 
 // ---------------------------------------------------------------------------
@@ -194,53 +192,6 @@ function getEmbedSrc(el: HTMLElement): string {
   }
 
   return src;
-}
-
-/**
- * Try to determine the source markdown file path from the DOM context or workspace.
- * Uses multiple strategies to find the file path.
- */
-function findSourcePath(el: HTMLElement, plugin: XMindPlugin): string {
-  // Strategy 1: Look for data-path attribute (most reliable)
-  let current: HTMLElement | null = el;
-  while (current) {
-    const path = current.getAttribute("data-path");
-    if (path) return path;
-
-    // Check if this is a view-content within a workspace leaf
-    if (current.classList.contains("view-content")) {
-      // Try to find the leaf via Obsidian's workspace
-      const leafEl = current.closest(".workspace-leaf");
-      if (leafEl) {
-        for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) {
-          if (leaf.view.containerEl.contains(current)) {
-            const file = (leaf.view as { file?: TFile }).file;
-            if (file) return file.path;
-          }
-        }
-      }
-    }
-
-    current = current.parentElement;
-  }
-
-  // Strategy 2: Check active leaf (fallback)
-  const activeLeaf = plugin.app.workspace.activeLeaf;
-  if (activeLeaf) {
-    const view = activeLeaf.view as { file?: TFile };
-    const file = view?.file;
-    if (file) return file.path;
-  }
-
-  // Strategy 3: Find any markdown leaf that contains the element
-  for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) {
-    if (leaf.view.containerEl.contains(el)) {
-      const file = (leaf.view as { file?: TFile }).file;
-      if (file) return file.path;
-    }
-  }
-
-  return "";
 }
 
 // ---------------------------------------------------------------------------
@@ -348,21 +299,19 @@ async function replaceEmbedWithPreview(
     let sibling = embed.nextElementSibling;
     while (sibling) {
       if (sibling.classList.contains("xmind-embed-wrapper")) {
-        const contentContainer = sibling.querySelector(".xmind-embed-container") as HTMLElement | null;
+        const contentContainer = sibling.querySelector(".xmind-embed-container");
         const mapContainer = contentContainer?.querySelector(".map-container");
         
-        if (mapContainer && (mapContainer as HTMLElement).isConnected) {
-          return;
-        } else if (mapContainer && !(mapContainer as HTMLElement).isConnected) {
+        if (mapContainer) {
           return;
         } else if (contentContainer) {
           const src = getEmbedSrc(embed);
           if (!src.toLowerCase().endsWith(".xmind")) return;
           
           const resolvedFile = plugin.app.metadataCache.getFirstLinkpathDest(src, sourcePath);
-          if (!(resolvedFile instanceof TFile)) return;
+          if (!resolvedFile || !(resolvedFile instanceof TFile)) return;
           
-          await buildMindElixirInContainer(contentContainer, resolvedFile, plugin);
+          void buildMindElixirInContainer(contentContainer as HTMLElement, resolvedFile, plugin);
           return;
         } else {
           sibling.remove();
@@ -540,7 +489,7 @@ async function replaceEmbedWithPreview(
               try {
                 mind.scaleFit();
                 mind.toCenter();
-              } catch (e) {
+              } catch {
                 isDestroyed = true;
                 cleanupObserver.disconnect();
                 void buildMindElixirInContainer(contentContainer, resolvedFile, plugin);
@@ -559,8 +508,7 @@ async function replaceEmbedWithPreview(
     }
 
     // Click on the preview → open in full XMind view
-    contentContainer.addEventListener("click", (e) => {
-      e.preventDefault();
+    contentContainer.addEventListener("click", () => {
       void openXMindView(plugin.app, resolvedFile);
     });
     contentContainer.addClass("xmind-embed-clickable");
@@ -685,7 +633,7 @@ async function buildMindElixirInContainer(
               try {
                 mind.scaleFit();
                 mind.toCenter();
-              } catch (e) {
+              } catch {
                 isDestroyed = true;
                 cleanupObserver.disconnect();
                 void buildMindElixirInContainer(contentContainer, resolvedFile, plugin);
@@ -701,8 +649,7 @@ async function buildMindElixirInContainer(
     });
     
     // Click to open in full view
-    contentContainer.addEventListener("click", (e) => {
-      e.preventDefault();
+    contentContainer.addEventListener("click", () => {
       void openXMindView(plugin.app, resolvedFile);
     });
     contentContainer.addClass("xmind-embed-clickable");
