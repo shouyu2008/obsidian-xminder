@@ -821,34 +821,12 @@ export class XMindView extends FileView {
 
       // Patch: allow dropping nodes onto root.
       // mind-elixir's drag validation rejects root as a drop target
-      // because root.nodeObj.parent is undefined. Instead of modifying
-      // the object directly, we use a Proxy to intercept parent property
-      // access only when needed. This is safer than Object.defineProperty
-      // as it doesn't permanently alter the object's behavior.
+      // because root.nodeObj.parent is undefined. We fix this by directly
+      // setting parent=true on the root node. This is simpler and more reliable
+      // than using a Proxy which can cause state inconsistencies.
       if (this.mind.nodeData) {
-        const originalNodeData = this.mind.nodeData;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        this.mind.nodeData = new Proxy(originalNodeData, {
-          get(target, prop) {
-            // Handle root node's parent property
-            if (prop === 'parent' && target === originalNodeData) {
-              return true;
-            }
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-            return Reflect.get(target, prop);
-          },
-          set(target, prop, value) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-            return Reflect.set(target, prop, value);
-          }
-        });
-
-        // Also ensure root node has a parent reference for drag validation
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-        if (!(originalNodeData as any).parent) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-          (originalNodeData as any).parent = true;
-        }
+        (this.mind.nodeData as any).parent = true;
       }
     } catch (initErr) {
       this.showError(initErr instanceof Error ? initErr.message : String(initErr));
