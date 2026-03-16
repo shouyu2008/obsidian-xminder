@@ -301,25 +301,23 @@
   box-shadow: 0 0 6px rgba(79, 195, 247, 0.6) !important;
 }
 
-/* Fix: Ensure root node drag feedback matches selected style
- * In custom layout, root node may have multiple drop targets.
- * This CSS ensures consistent drag feedback across entire root node. */
-.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.show,
-.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.in.show {
+/* Fix: Ensure root node drag feedback matches selected style.
+ * When dragging to the edges of the root node, mind-elixir typically switches
+ * feedback to before/after sibling lines. We force it to show the full selection
+ * outline instead to maintain a clear parent-child drop target visual across 
+ * the entire root node area, matching the selection design as requested. */
+.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.show {
+  display: block !important;
+  height: 100% !important;
+  top: 0 !important;
+  bottom: auto !important;
   outline: 3px solid #4fc3f7 !important;
   outline-offset: 2px !important;
   box-shadow: 0 0 8px rgba(79, 195, 247, 0.5) !important;
   border-radius: inherit;
-  height: 100% !important;
-  top: 0 !important;
-  pointer-events: none;
   background: none !important;
-}
-
-/* Hide before/after insert previews on root node to avoid confusion */
-.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.before.show,
-.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.after.show {
-  display: none !important;
+  opacity: 1 !important;
+  pointer-events: none;
 }
 
 /* Theme light overrides */

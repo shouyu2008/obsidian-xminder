@@ -783,17 +783,14 @@ export class XMindView extends FileView {
       // NOTE: Disabled for now due to potential conflicts with mind-elixir internals
       // this.patchNodeEditingDisplay();
 
-      // Patch: allow dropping nodes onto root.
+      // Patch: allow dropping nodes onto root and fix drag-and-drop edge cases
       if (extendedMind.nodeData) {
+        // 1. Root node parent patch: ensure it's always a valid drop target
         const applyParentPatch = (nd: Record<string, unknown>): void => {
           nd.parent = true;
           Object.defineProperty(nd, 'parent', {
-            get() {
-              return true;
-            },
-            set() {
-              // no-op: prevent setting parent to any other value on root
-            },
+            get: () => true,
+            set: () => {}, // no-op: prevent overwrite by internal logic
             configurable: true,
             enumerable: true,
           });
@@ -801,46 +798,50 @@ export class XMindView extends FileView {
 
         applyParentPatch(extendedMind.nodeData as unknown as Record<string, unknown>);
 
-        const mindInstance = this.mind as MindElixirInstance & { refresh: (data?: MindElixirData) => void; nodeData: NodeObj };
-        const originalRefresh = mindInstance.refresh.bind(mindInstance);
-        mindInstance.refresh = (data?: MindElixirData): void => {
+        const mi = this.mind as any;
+
+        // 2. Patch refresh() so the parent patch survives undo/redo
+        const originalRefresh = mi.refresh.bind(mi);
+        mi.refresh = (data?: MindElixirData): void => {
           originalRefresh(data);
-          if (mindInstance.nodeData) {
-            applyParentPatch(mindInstance.nodeData as unknown as Record<string, unknown>);
-          }
+          if (mi.nodeData) applyParentPatch(mi.nodeData as unknown as Record<string, unknown>);
         };
 
-        // Also patch the getData method to ensure parent is always true
-        const originalGetData = this.mind.getData.bind(this.mind) as () => MindElixirData;
-        const patchedGetData = (): MindElixirData => {
-          const data = originalGetData();
-          if (data) {
-            const rootData = data as unknown as Record<string, unknown>;
-            if (!rootData.parent) {
-              rootData.parent = true;
-            }
+        // 3. Patch moveNodeBefore/After to redirect to moveNodeIn when the target is root.
+        // This prevents the "node loss" bug where dropping on root edges removes nodes
+        // from their parent but fails to attach them back because root has no siblings.
+        const originalMoveBefore = mi.moveNodeBefore.bind(mi);
+        const originalMoveAfter = mi.moveNodeAfter.bind(mi);
+        mi.moveNodeBefore = (nodes: any, target: HTMLElement) => {
+          if (target?.tagName === 'ME-TPC' && target.parentElement?.tagName === 'ME-ROOT') {
+            return mi.moveNodeIn(nodes, target);
           }
+          return originalMoveBefore(nodes, target);
+        };
+        mi.moveNodeAfter = (nodes: any, target: HTMLElement) => {
+          if (target?.tagName === 'ME-TPC' && target.parentElement?.tagName === 'ME-ROOT') {
+            return mi.moveNodeIn(nodes, target);
+          }
+          return originalMoveAfter(nodes, target);
+        };
+
+        // 4. Ensure getData() always includes parent=true for root topic in exports
+        const originalGetData = mi.getData.bind(mi);
+        mi.getData = (): MindElixirData => {
+          const data = originalGetData();
+          if (data?.nodeData) (data.nodeData as any).parent = true;
           return data;
         };
-        (this.mind as { getData: () => MindElixirData }).getData = patchedGetData;
 
-        // Add beforeDrop hook to unify drag behavior on root node
-        (this.mind as { beforeDrop?: (target: NodeObj, drag: NodeObj, e: Event) => boolean }).beforeDrop = 
-          (target: NodeObj, drag: NodeObj, e: Event): boolean => {
-            if (target.id === "root") return true;
-            return true;
-          };
-
-        // Fix: Ensure layout is refreshed after dragend even if drop failed
-        // This prevents nodes from "disappearing" or being misplaced when
-        // a drag is released without a valid drop target.
+        // 5. Layout safety: Force refresh after any drag ends regardless of success.
+        // This handles "release without snap" cases by resetting the absolute layout.
         const mapCanvas = wrapper.querySelector(".map-canvas");
         if (mapCanvas instanceof HTMLElement) {
           mapCanvas.addEventListener("dragend", () => {
             requestAnimationFrame(() => {
-              if (this.mind) {
-                customLinkDiv.call(this.mind);
-              }
+              requestAnimationFrame(() => {
+                if (this.mind) customLinkDiv.call(this.mind);
+              });
             });
           }, { passive: true });
         }
