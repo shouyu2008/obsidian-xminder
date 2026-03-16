@@ -66,20 +66,15 @@ function buildLayoutTree(
 ): { lhs: LayoutNode[]; rhs: LayoutNode[]; root: { tpc: HTMLElement; meRoot: HTMLElement; width: number; height: number } } {
   const meRootEl = nodesEl.querySelector("me-root") as HTMLElement;
   const rootTpc = meRootEl.querySelector("me-tpc") as HTMLElement;
-  // Temporarily force intrinsic sizing on root tpc to avoid flex stretching.
-  // In mind-elixir's flex layout, me-root can be stretched vertically by
-  // align-items, causing me-tpc (display:block) to fill the stretched height.
-  const savedRootTpcW = rootTpc.style.width;
-  const savedRootTpcH = rootTpc.style.height;
-  rootTpc.addClass("xmind-fit-content");
-  void rootTpc.offsetHeight; // force reflow
-  const rootW = rootTpc.offsetWidth;
-  const rootH = rootTpc.offsetHeight;
-  rootTpc.removeClass("xmind-fit-content");
-  rootTpc.setCssStyles({
-    width: savedRootTpcW || "",
-    height: savedRootTpcH || "",
-  });
+  // Measure the intrinsic size of the root node by temporarily removing it 
+  // from the flex layout using absolute positioning. This ensures the text 
+  // does not wrap unnaturally or get constrained by the flex container.
+  const savedPos = meRootEl.style.position;
+  meRootEl.setCssStyles({ position: "absolute" });
+  void meRootEl.offsetHeight; // force reflow
+  const rootW = meRootEl.offsetWidth;
+  const rootH = meRootEl.offsetHeight;
+  meRootEl.setCssStyles({ position: savedPos || "" });
 
   // Detect root width change and trigger layout update if needed
   if (lastRootWidth && lastRootWidth.value !== rootW) {
@@ -729,7 +724,8 @@ export class XMindView extends FileView {
     this.allSheets[this.activeSheetIndex] = {
       ...this.allSheets[this.activeSheetIndex],
       rootTopic: xmindData.rootTopic,
-      title: xmindData.title ?? this.allSheets[this.activeSheetIndex].title,
+      // We don't overwrite the sheet title with the root topic name, 
+      // but retain the original sheet title already spread from allSheets.
     };
   }
 
