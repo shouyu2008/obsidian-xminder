@@ -784,17 +784,7 @@ export class XMindView extends FileView {
       // this.patchNodeEditingDisplay();
 
       // Patch: allow dropping nodes onto root.
-      // mind-elixir's drag validation (Me function) rejects root as a drop target
-      // because root.nodeObj.parent is undefined. We fix this by:
-      // 1. Setting parent=true on nodeData via Object.defineProperty
-      // 2. Patching the refresh() method so that after undo/redo (which calls
-      //    JSON.parse(JSON.stringify(...)) and replaces this.nodeData entirely),
-      //    we re-apply the parent=true fix on the new nodeData object.
       if (extendedMind.nodeData) {
-        // Helper: apply the parent=true property descriptor to a nodeData object.
-        // Uses Object.defineProperty with a getter that always returns true,
-        // so even if mind-elixir internally tries to delete or overwrite it,
-        // the value remains true.
         const applyParentPatch = (nd: Record<string, unknown>): void => {
           nd.parent = true;
           Object.defineProperty(nd, 'parent', {
@@ -809,18 +799,12 @@ export class XMindView extends FileView {
           });
         };
 
-        // Apply patch to the initial nodeData
         applyParentPatch(extendedMind.nodeData as unknown as Record<string, unknown>);
 
-        // Patch refresh() so the fix survives undo/redo.
-        // refresh() does: this.nodeData = JSON.parse(JSON.stringify(e)).nodeData
-        // which replaces the patched object with a plain one. We intercept
-        // refresh() to re-apply the patch after the original runs.
         const mindInstance = this.mind as MindElixirInstance & { refresh: (data?: MindElixirData) => void; nodeData: NodeObj };
         const originalRefresh = mindInstance.refresh.bind(mindInstance);
         mindInstance.refresh = (data?: MindElixirData): void => {
           originalRefresh(data);
-          // After refresh, this.nodeData is a brand-new object — re-patch it
           if (mindInstance.nodeData) {
             applyParentPatch(mindInstance.nodeData as unknown as Record<string, unknown>);
           }
@@ -839,6 +823,27 @@ export class XMindView extends FileView {
           return data;
         };
         (this.mind as { getData: () => MindElixirData }).getData = patchedGetData;
+
+        // Add beforeDrop hook to unify drag behavior on root node
+        (this.mind as { beforeDrop?: (target: NodeObj, drag: NodeObj, e: Event) => boolean }).beforeDrop = 
+          (target: NodeObj, drag: NodeObj, e: Event): boolean => {
+            if (target.id === "root") return true;
+            return true;
+          };
+
+        // Fix: Ensure layout is refreshed after dragend even if drop failed
+        // This prevents nodes from "disappearing" or being misplaced when
+        // a drag is released without a valid drop target.
+        const mapCanvas = wrapper.querySelector(".map-canvas");
+        if (mapCanvas instanceof HTMLElement) {
+          mapCanvas.addEventListener("dragend", () => {
+            requestAnimationFrame(() => {
+              if (this.mind) {
+                customLinkDiv.call(this.mind);
+              }
+            });
+          }, { passive: true });
+        }
       }
     } catch (initErr) {
       this.showError(initErr instanceof Error ? initErr.message : String(initErr));
