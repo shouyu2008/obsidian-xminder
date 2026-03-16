@@ -784,34 +784,47 @@ export class XMindView extends FileView {
       // this.patchNodeEditingDisplay();
 
       // Patch: allow dropping nodes onto root.
-      // mind-elixir's drag validation rejects root as a drop target
-      // because root.nodeObj.parent is undefined. We fix this by using Object.defineProperty
-      // to ensure the root node always has parent=true, even after undo operations.
+      // mind-elixir's drag validation (Me function) rejects root as a drop target
+      // because root.nodeObj.parent is undefined. We fix this by:
+      // 1. Setting parent=true on nodeData via Object.defineProperty
+      // 2. Patching the refresh() method so that after undo/redo (which calls
+      //    JSON.parse(JSON.stringify(...)) and replaces this.nodeData entirely),
+      //    we re-apply the parent=true fix on the new nodeData object.
       if (extendedMind.nodeData) {
-        const nodeData = extendedMind.nodeData as unknown as Record<string, unknown>;
-        nodeData.parent = true;
+        // Helper: apply the parent=true property descriptor to a nodeData object.
+        // Uses Object.defineProperty with a getter that always returns true,
+        // so even if mind-elixir internally tries to delete or overwrite it,
+        // the value remains true.
+        const applyParentPatch = (nd: Record<string, unknown>): void => {
+          nd.parent = true;
+          Object.defineProperty(nd, 'parent', {
+            get() {
+              return true;
+            },
+            set() {
+              // no-op: prevent setting parent to any other value on root
+            },
+            configurable: true,
+            enumerable: true,
+          });
+        };
 
-        // Use Object.defineProperty to ensure root.parent is always true, even after undo/redo
-        // This prevents the issue where repeated dragging to root followed by Ctrl+Z
-        // breaks the drag-to-root functionality
-        Object.defineProperty(nodeData, 'parent', {
-          get(this: Record<string, unknown>) {
-            return true;
-          },
-          set(this: Record<string, unknown>, value: unknown) {
-            // Prevent setting parent to false on root node
-            if (value !== false) {
-              Object.defineProperty(this, 'parent', {
-                value: true,
-                writable: true,
-                configurable: true,
-                enumerable: true
-              });
-            }
-          },
-          configurable: true,
-          enumerable: true
-        });
+        // Apply patch to the initial nodeData
+        applyParentPatch(extendedMind.nodeData as unknown as Record<string, unknown>);
+
+        // Patch refresh() so the fix survives undo/redo.
+        // refresh() does: this.nodeData = JSON.parse(JSON.stringify(e)).nodeData
+        // which replaces the patched object with a plain one. We intercept
+        // refresh() to re-apply the patch after the original runs.
+        const mindInstance = this.mind as MindElixirInstance & { refresh: (data?: MindElixirData) => void; nodeData: NodeObj };
+        const originalRefresh = mindInstance.refresh.bind(mindInstance);
+        mindInstance.refresh = (data?: MindElixirData): void => {
+          originalRefresh(data);
+          // After refresh, this.nodeData is a brand-new object — re-patch it
+          if (mindInstance.nodeData) {
+            applyParentPatch(mindInstance.nodeData as unknown as Record<string, unknown>);
+          }
+        };
 
         // Also patch the getData method to ensure parent is always true
         const originalGetData = this.mind.getData.bind(this.mind) as () => MindElixirData;
@@ -826,18 +839,6 @@ export class XMindView extends FileView {
           return data;
         };
         (this.mind as { getData: () => MindElixirData }).getData = patchedGetData;
-
-        // Add beforeDrop hook to unify drag behavior on root node
-        // This ensures consistent drop effect regardless of where node is dropped on root
-        (this.mind as { beforeDrop?: (target: NodeObj, drag: NodeObj, e: Event) => boolean }).beforeDrop = 
-          (target: NodeObj, drag: NodeObj, e: Event): boolean => {
-            // Always allow dropping on root node
-            if (target.id === "root") {
-              return true;
-            }
-            // Use default behavior for other nodes
-            return true;
-          };
       }
     } catch (initErr) {
       this.showError(initErr instanceof Error ? initErr.message : String(initErr));
@@ -1095,13 +1096,6 @@ export class XMindView extends FileView {
 
     // Listen for any operation (edit/add/remove/move) → trigger auto-save
     this.mind.bus.addListener("operation", (info) => {
-      // CRITICAL: Ensure root node still has parent=true for drag-to-root support
-      // mind-elixir's drag validation may reset or check this during operations
-      if (this.mind?.nodeData) {
-        const nodeData = this.mind.nodeData as unknown as Record<string, unknown>;
-        nodeData.parent = true;
-      }
-
       this.scheduleSave();
     });
 
