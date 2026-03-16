@@ -67,14 +67,15 @@ function buildLayoutTree(
   const meRootEl = nodesEl.querySelector("me-root") as HTMLElement;
   const rootTpc = meRootEl.querySelector("me-tpc") as HTMLElement;
   // Measure the intrinsic size of the root node by temporarily removing it 
-  // from the flex layout using absolute positioning. This ensures the text 
-  // does not wrap unnaturally or get constrained by the flex container.
+  // from the flex layout using absolute positioning and max-content width. 
+  // This ensures the text does not wrap unnaturally or get constrained by the container.
   const savedPos = meRootEl.style.position;
-  meRootEl.setCssStyles({ position: "absolute" });
+  const savedWidth = meRootEl.style.width;
+  meRootEl.setCssStyles({ position: "absolute", width: "max-content" });
   void meRootEl.offsetHeight; // force reflow
   const rootW = meRootEl.offsetWidth;
   const rootH = meRootEl.offsetHeight;
-  meRootEl.setCssStyles({ position: savedPos || "" });
+  meRootEl.setCssStyles({ position: savedPos || "", width: savedWidth || "" });
 
   // Detect root width change and trigger layout update if needed
   if (lastRootWidth && lastRootWidth.value !== rootW) {
