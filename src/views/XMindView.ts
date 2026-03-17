@@ -7,7 +7,7 @@ import {
   Scope,
 } from "obsidian";
 import MindElixir from "mind-elixir";
-import type { MindElixirData, MindElixirInstance, NodeObj } from "mind-elixir";
+import type { MindElixirData, MindElixirInstance, NodeObj, Topic } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
 import { serializeXMind } from "../xmind/serializer";
 import type { XMindNode, XMindData } from "../xmind/types";
@@ -22,10 +22,32 @@ const AUTO_SAVE_DELAY = 500;
 // Global cache for root node width to detect changes across layout updates
 let gRootWidthCache: number | null = null;
 
-// Type for mind-elixir instance with custom properties
+// Minimal local types to satisfy ESLint when library types might be resolved as 'any'
+interface LocalNodeObj {
+  id: string;
+  topic: string;
+  children?: LocalNodeObj[];
+  parent?: LocalNodeObj;
+  [key: string]: unknown;
+}
+
+interface LocalMindElixirData {
+  nodeData: LocalNodeObj;
+}
+
+// Type for mind-elixir instance with custom properties and patched methods
 interface ExtendedMindElixirInstance {
   linkDiv?: (this: MindElixirInstance) => void;
-  nodeData?: NodeObj & { parent?: boolean };
+  nodeData: LocalNodeObj;
+  refresh: (data?: LocalMindElixirData) => void;
+  moveNodeBefore: (nodes: Topic[], target: Topic) => void | Promise<void>;
+  moveNodeAfter: (nodes: Topic[], target: Topic) => void | Promise<void>;
+  moveNodeIn: (nodes: Topic[], target: Topic) => void | Promise<void>;
+  getData: () => LocalMindElixirData;
+  bus: {
+    addListener: (name: string, callback: (info: unknown) => void) => void;
+    fire: (name: string, info?: unknown) => void;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -798,40 +820,47 @@ export class XMindView extends FileView {
 
         applyParentPatch(extendedMind.nodeData as unknown as Record<string, unknown>);
 
-        const mi = this.mind as any;
+        // Use unknown bridge to avoid pollution from potentially any-typed MindElixirInstance
+        const mind = extendedMind as unknown as ExtendedMindElixirInstance;
 
         // 2. Patch refresh() so the parent patch survives undo/redo
-        const originalRefresh = mi.refresh.bind(mi);
-        mi.refresh = (data?: MindElixirData): void => {
+        const originalRefresh = (mind.refresh.bind(mind) as unknown) as (data?: LocalMindElixirData) => void;
+        mind.refresh = ((data?: LocalMindElixirData): void => {
           originalRefresh(data);
-          if (mi.nodeData) applyParentPatch(mi.nodeData as unknown as Record<string, unknown>);
-        };
+          if (mind.nodeData) applyParentPatch(mind.nodeData as unknown as Record<string, unknown>);
+        }) as (data?: LocalMindElixirData) => void;
 
         // 3. Patch moveNodeBefore/After to redirect to moveNodeIn when the target is root.
         // This prevents the "node loss" bug where dropping on root edges removes nodes
         // from their parent but fails to attach them back because root has no siblings.
-        const originalMoveBefore = mi.moveNodeBefore.bind(mi);
-        const originalMoveAfter = mi.moveNodeAfter.bind(mi);
-        mi.moveNodeBefore = (nodes: any, target: HTMLElement) => {
+        const originalMoveBefore = (mind.moveNodeBefore.bind(mind) as unknown) as (nodes: Topic[], target: Topic) => void | Promise<void>;
+        const originalMoveAfter = (mind.moveNodeAfter.bind(mind) as unknown) as (nodes: Topic[], target: Topic) => void | Promise<void>;
+
+        mind.moveNodeBefore = ((nodes: Topic[], target: Topic): void | Promise<void> => {
           if (target?.tagName === 'ME-TPC' && target.parentElement?.tagName === 'ME-ROOT') {
-            return mi.moveNodeIn(nodes, target);
+            return mind.moveNodeIn(nodes, target);
           }
           return originalMoveBefore(nodes, target);
-        };
-        mi.moveNodeAfter = (nodes: any, target: HTMLElement) => {
+        }) as (nodes: Topic[], target: Topic) => void | Promise<void>;
+
+        mind.moveNodeAfter = ((nodes: Topic[], target: Topic): void | Promise<void> => {
           if (target?.tagName === 'ME-TPC' && target.parentElement?.tagName === 'ME-ROOT') {
-            return mi.moveNodeIn(nodes, target);
+            return mind.moveNodeIn(nodes, target);
           }
           return originalMoveAfter(nodes, target);
-        };
+        }) as (nodes: Topic[], target: Topic) => void | Promise<void>;
 
         // 4. Ensure getData() always includes parent=true for root topic in exports
-        const originalGetData = mi.getData.bind(mi);
-        mi.getData = (): MindElixirData => {
+        const originalGetData = (mind.getData.bind(mind) as unknown) as () => LocalMindElixirData;
+        mind.getData = ((): LocalMindElixirData => {
           const data = originalGetData();
-          if (data?.nodeData) (data.nodeData as any).parent = true;
+          if (data?.nodeData) {
+            // Use Record cast to bypass type check safely for the parent boolean property
+            const rootNode = data.nodeData as unknown as Record<string, unknown>;
+            rootNode.parent = true;
+          }
           return data;
-        };
+        }) as () => LocalMindElixirData;
 
         // 5. Layout safety: Force refresh after any drag ends regardless of success.
         // This handles "release without snap" cases by resetting the absolute layout.

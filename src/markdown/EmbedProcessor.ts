@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, TFile, normalizePath, App, MarkdownView } from "obsidian";
+import { MarkdownPostProcessorContext, TFile, normalizePath, App, MarkdownView, FileView } from "obsidian";
 import MindElixir from "mind-elixir";
 import type { MindElixirInstance } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
@@ -85,7 +85,7 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
           let sourcePath = "";
           const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
           if (activeView) {
-            const file = (activeView as { file?: TFile }).file;
+            const file = activeView.file;
             if (file) sourcePath = file.path;
           }
 
@@ -311,7 +311,9 @@ async function replaceEmbedWithPreview(
           const resolvedFile = plugin.app.metadataCache.getFirstLinkpathDest(src, sourcePath);
           if (!resolvedFile || !(resolvedFile instanceof TFile)) return;
           
-          void buildMindElixirInContainer(contentContainer as HTMLElement, resolvedFile, plugin);
+          if (contentContainer instanceof HTMLElement) {
+            void buildMindElixirInContainer(contentContainer, resolvedFile, plugin);
+          }
           return;
         } else {
           sibling.remove();
@@ -705,7 +707,7 @@ async function openXMindView(app: App, file: TFile): Promise<void> {
     const existing = app.workspace
       .getLeavesOfType(XMIND_VIEW_TYPE)
       .find(
-        (leaf) => (leaf.view as { file?: TFile }).file?.path === file.path
+        (leaf) => leaf.view instanceof FileView && leaf.view.file?.path === file.path
       );
 
     if (existing) {

@@ -10,6 +10,7 @@
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
+    "noEmit": true,
     "lib": [
       "DOM",
       "ES2018",
