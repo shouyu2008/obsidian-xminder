@@ -17,7 +17,7 @@ export async function serializeXMind(data: XMindMultiSheetData): Promise<ArrayBu
   const metadata = {
     creator: {
       name: "shouyu2008",
-      version: "1.0.4",
+      version: "1.0.5",
     },
   };
   zip.file("metadata.json", JSON.stringify(metadata));
