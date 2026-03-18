@@ -106,8 +106,18 @@
    We replace the entire content but this guard prevents flash-of-content. */
 .xmind-embed-wrapper .file-embed-icon,
 .xmind-embed-wrapper .file-embed-title,
-.xmind-embed-wrapper .file-embed-link {
+.xmind-embed-wrapper .file-embed-link,
+/* Fix: Hide Obsidian's default LP placeholders for XMind to avoid double-rendering */
+.markdown-source-view.mod-cm6 .cm-content [data-src$=".xmind"].internal-embed,
+.markdown-source-view.mod-cm6 .cm-content .internal-embed[src$=".xmind"] {
   display: none !important;
+}
+
+/* Specific styling for Live Preview active line (cursor on link) */
+.xmind-lp-active {
+  margin-top: 10px;
+  border-top: 1px dashed var(--background-modifier-border);
+  padding-top: 10px;
 }
 
 /* Loading indicator */

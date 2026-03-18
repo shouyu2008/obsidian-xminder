@@ -4,8 +4,8 @@ import {
   EditorView,
   WidgetType,
 } from "@codemirror/view";
-import { StateField, EditorState } from "@codemirror/state";
-import { TFile, normalizePath } from "obsidian";
+import { StateField, EditorState, Prec } from "@codemirror/state";
+import { TFile, normalizePath, editorLivePreviewField } from "obsidian";
 import MindElixir from "mind-elixir";
 import type { MindElixirInstance } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
@@ -17,7 +17,8 @@ import { i18n } from "../i18n";
 class XMindWidget extends WidgetType {
   constructor(
     private readonly file: TFile,
-    private readonly plugin: XMindPlugin
+    private readonly plugin: XMindPlugin,
+    private readonly isBlockWidget: boolean = false
   ) {
     super();
   }
@@ -25,6 +26,9 @@ class XMindWidget extends WidgetType {
   toDOM(view: EditorView): HTMLElement {
     const container = document.createElement("div");
     container.className = "xmind-embed-wrapper xmind-lp-embed xmind-embed-block";
+    if (this.isBlockWidget) {
+      container.addClass("xmind-lp-active");
+    }
     
     const contentContainer = document.createElement("div");
     contentContainer.className = "xmind-embed-container";
@@ -98,22 +102,33 @@ class XMindWidget extends WidgetType {
   }
 
   eq(other: XMindWidget): boolean {
-    return other.file.path === this.file.path;
+    return other.file.path === this.file.path && other.isBlockWidget === this.isBlockWidget;
   }
 }
 
 function buildDecorations(state: EditorState, plugin: XMindPlugin): DecorationSet {
-  const builder: { from: number; to: number; decoration: Decoration }[] = [];
+  // 1. Safety Check: Only render in Live Preview mode
+  // The official way is state.field(editorLivePreviewField), but let's also 
+  // ensure we aren't in Source Mode.
+  const isLivePreview = state.field(editorLivePreviewField, false) !== false;
   
-  // We process the whole document here, but EditorState.doc is efficient.
-  // For larger files, this might need optimization using viewport info,
-  // but StateField decorations are usually calculated for the whole doc.
-  // CodeMirror handles the rendering efficiently.
+  if (!isLivePreview) {
+    return Decoration.none;
+  }
+
+  const builder: { from: number; to: number; decoration: Decoration }[] = [];
   const text = state.doc.toString();
   const regex = /!\[\[([^\]]+\.xmind)(?:\|[^\]]+)?\]\]/gi;
   let match;
   
+  const selection = state.selection.main;
+  
   while ((match = regex.exec(text)) !== null) {
+    const from = match.index;
+    const to = match.index + match[0].length;
+    
+    const isEditing = selection.from <= to && selection.to >= from;
+    
     const linkPath = match[1];
     let sourcePath = "";
     const activeFile = plugin.app.workspace.getActiveFile();
@@ -122,20 +137,20 @@ function buildDecorations(state: EditorState, plugin: XMindPlugin): DecorationSe
     const resolvedFile = plugin.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath);
     
     if (resolvedFile instanceof TFile) {
-      // To use block decoration, it's safer to ensure we match the whole line if possible,
-      // or at least acknowledge this is a replacement.
-      // However, the error was specifically about using block:true in a ViewPlugin.
-      // Using StateField should resolve that core error.
-      const deco = Decoration.replace({
-        widget: new XMindWidget(resolvedFile, plugin),
-        block: true,
-      });
-      
-      builder.push({ 
-        from: match.index, 
-        to: match.index + match[0].length, 
-        decoration: deco 
-      });
+      if (isEditing) {
+        const deco = Decoration.widget({
+          widget: new XMindWidget(resolvedFile, plugin, true),
+          block: true,
+          side: 1,
+        });
+        builder.push({ from: to, to: to, decoration: deco });
+      } else {
+        const deco = Decoration.replace({
+          widget: new XMindWidget(resolvedFile, plugin, false),
+          block: true,
+        });
+        builder.push({ from: from, to: to, decoration: deco });
+      }
     }
   }
   
@@ -152,7 +167,8 @@ export function xmindLivePreviewExtension(plugin: XMindPlugin) {
       return buildDecorations(state, plugin);
     },
     update(oldSet, tr) {
-      if (tr.docChanged) {
+      // Re-build if doc changed, selection changed, or the view was reconfigured (e.g., LP <-> Source Mode transition)
+      if (tr.docChanged || tr.selection || tr.reconfigured) {
         return buildDecorations(tr.state, plugin);
       }
       return oldSet.map(tr.changes);
@@ -162,5 +178,5 @@ export function xmindLivePreviewExtension(plugin: XMindPlugin) {
     },
   });
 
-  return xmindField;
+  return Prec.highest(xmindField);
 }
