@@ -36,61 +36,63 @@ class XMindEmbedChild extends MarkdownRenderChild {
     super(containerEl);
   }
 
-  async onload() {
-    this.containerEl.empty();
-    this.containerEl.addClass("xmind-embed-wrapper");
-    this.containerEl.addClass("xmind-embed-block");
-    
-    // Create inner container for MindElixir
-    this.contentEl = this.containerEl.createDiv({ cls: "xmind-embed-container" });
-    this.contentEl.addClass("xmind-embed-clickable");
-    
-    const height = this.plugin.settings.embedHeight ?? 400;
-    this.contentEl.setCssStyles({
-      width: "100%",
-      height: `${height}px`,
-      position: "relative",
-    });
-
-    const loading = this.contentEl.createDiv({ cls: "xmind-embed-loading" });
-    loading.textContent = i18n.t().embed.loadingXMind;
-
-    try {
-      const buffer = await this.plugin.app.vault.adapter.readBinary(
-        normalizePath(this.file.path)
-      );
+  onload() {
+    void (async () => {
+      this.containerEl.empty();
+      this.containerEl.addClass("xmind-embed-wrapper");
+      this.containerEl.addClass("xmind-embed-block");
       
-      const multiSheet = await parseXMind(buffer);
-      const meData = xmindDataToMindElixir(multiSheet.sheets[0]);
+      // Create inner container for MindElixir
+      this.contentEl = this.containerEl.createDiv({ cls: "xmind-embed-container" });
+      this.contentEl.addClass("xmind-embed-clickable");
       
-      if (!this.containerEl.isConnected) return;
-      loading.remove();
-
-      const isDark = document.body.classList.contains("theme-dark");
-      this.mind = new MindElixir({
-        el: this.contentEl,
-        direction: MindElixir.SIDE,
-        draggable: false,
-        editable: false,
-        contextMenu: false,
-        toolBar: false,
-        keypress: false,
-        theme: isDark ? MindElixir.DARK_THEME : MindElixir.THEME,
-        selectionContainer: document.body,
+      const height = this.plugin.settings.embedHeight ?? 400;
+      this.contentEl.setCssStyles({
+        width: "100%",
+        height: `${height}px`,
+        position: "relative",
       });
 
-      // Inject shared layout engine
-      (this.mind as unknown as { linkDiv: (this: MindElixirInstance) => void }).linkDiv = customLinkDiv;
-      this.mind.init(meData);
+      const loading = this.contentEl.createDiv({ cls: "xmind-embed-loading" });
+      loading.textContent = i18n.t().embed.loadingXMind;
 
-      this.setupObservers();
-      this.contentEl.addEventListener("click", this.onClick);
+      try {
+        const buffer = await this.plugin.app.vault.adapter.readBinary(
+          normalizePath(this.file.path)
+        );
+        
+        const multiSheet = await parseXMind(buffer);
+        const meData = xmindDataToMindElixir(multiSheet.sheets[0]);
+        
+        if (!this.containerEl.isConnected) return;
+        loading.remove();
 
-    } catch (err) {
-      if (loading.parentElement) {
-        loading.textContent = "Error: " + (err instanceof Error ? err.message : String(err));
+        const isDark = document.body.classList.contains("theme-dark");
+        this.mind = new MindElixir({
+          el: this.contentEl,
+          direction: MindElixir.SIDE,
+          draggable: false,
+          editable: false,
+          contextMenu: false,
+          toolBar: false,
+          keypress: false,
+          theme: isDark ? MindElixir.DARK_THEME : MindElixir.THEME,
+          selectionContainer: document.body,
+        });
+
+        // Inject shared layout engine
+        (this.mind as unknown as { linkDiv: (this: MindElixirInstance) => void }).linkDiv = customLinkDiv;
+        this.mind.init(meData);
+
+        this.setupObservers();
+        this.contentEl.addEventListener("click", this.onClick);
+
+      } catch (err) {
+        if (loading.parentElement) {
+          loading.textContent = "Error: " + (err instanceof Error ? err.message : String(err));
+        }
       }
-    }
+    })();
   }
 
   private onClick = (e: MouseEvent) => {

@@ -1,4 +1,4 @@
-import type { MindElixirInstance, NodeObj, Topic } from "mind-elixir";
+import type { MindElixirInstance, NodeObj } from "mind-elixir";
 
 // Horizontal gap between adjacent levels (px)
 export const H_GAP = 100;
@@ -150,9 +150,12 @@ export function buildLayoutTree(
 
 function findNodeById(root: NodeObj, id: string): NodeObj | null {
   if (root.id === id) return root;
-  for (const child of root.children ?? []) {
-    const found = findNodeById(child, id);
-    if (found) return found;
+  const children = root.children;
+  if (children) {
+    for (const child of children) {
+      const found = findNodeById(child, id);
+      if (found) return found;
+    }
   }
   return null;
 }

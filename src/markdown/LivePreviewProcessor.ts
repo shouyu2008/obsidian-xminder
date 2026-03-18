@@ -1,9 +1,11 @@
+// eslint-disable-next-line import/no-extraneous-dependencies -- These are provided by Obsidian's environment
 import {
   Decoration,
   DecorationSet,
   EditorView,
   WidgetType,
 } from "@codemirror/view";
+// eslint-disable-next-line import/no-extraneous-dependencies -- These are provided by Obsidian's environment
 import { StateField, EditorState, Prec } from "@codemirror/state";
 import { TFile, normalizePath, editorLivePreviewField } from "obsidian";
 import MindElixir from "mind-elixir";
@@ -90,7 +92,7 @@ class XMindWidget extends WidgetType {
       container.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.plugin.openXMindFile(this.file);
+        void this.plugin.openXMindFile(this.file);
       });
       container.addClass("xmind-embed-clickable");
       
@@ -119,17 +121,16 @@ function buildDecorations(state: EditorState, plugin: XMindPlugin): DecorationSe
   const builder: { from: number; to: number; decoration: Decoration }[] = [];
   const text = state.doc.toString();
   const regex = /!\[\[([^\]]+\.xmind)(?:\|[^\]]+)?\]\]/gi;
-  let match;
-  
   const selection = state.selection.main;
   
+  let match: RegExpExecArray | null;
   while ((match = regex.exec(text)) !== null) {
     const from = match.index;
-    const to = match.index + match[0].length;
+    const to = from + match[0].length;
+    const linkPath = match[1];
     
     const isEditing = selection.from <= to && selection.to >= from;
     
-    const linkPath = match[1];
     let sourcePath = "";
     const activeFile = plugin.app.workspace.getActiveFile();
     if (activeFile) sourcePath = activeFile.path;
