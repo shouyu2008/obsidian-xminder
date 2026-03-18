@@ -242,7 +242,8 @@
 }
 
 /* Level 3 node topic: pill style */
-.xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc {
+.xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc,
+.xmind-embed-container .map-container me-children > me-wrapper > me-parent > me-tpc {
   background-color: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
@@ -252,7 +253,8 @@
 }
 
 /* Level 4+ node topic: lighter pill */
-.xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
+.xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc,
+.xmind-embed-container .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
   background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
@@ -261,18 +263,21 @@
 }
 
 /* Node cursor: pointer on hover, text cursor when editing */
-.xmind-mind-wrapper .map-container me-tpc {
+.xmind-mind-wrapper .map-container me-tpc,
+.xmind-embed-container .map-container me-tpc {
   cursor: pointer !important;
 }
 .xmind-mind-wrapper .map-container #input-box,
 .xmind-mind-wrapper .map-container me-tpc[contenteditable],
 .xmind-mind-wrapper .map-container me-tpc[contenteditable="true"],
-.xmind-mind-wrapper .map-container me-tpc[contenteditable="plaintext-only"] {
+.xmind-mind-wrapper .map-container me-tpc[contenteditable="plaintext-only"],
+.xmind-embed-container .map-container #input-box {
   cursor: text !important;
 }
 
 /* Selected node — bright outline for all selected nodes (root, L1, L2+) */
-.xmind-mind-wrapper .map-container me-tpc.selected {
+.xmind-mind-wrapper .map-container me-tpc.selected,
+.xmind-embed-container .map-container me-tpc.selected {
   outline: 3px solid #4fc3f7 !important;
   outline-offset: 2px !important;
   border-color: #4fc3f7 !important;
@@ -321,14 +326,20 @@
 }
 
 /* Theme light overrides */
-.theme-light .xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc {
+.theme-light .xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc,
+.theme-light .xmind-embed-container .map-container me-children > me-wrapper > me-parent > me-tpc {
   background-color: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
 }
 
-.theme-light .xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
+.theme-light .xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc,
+.theme-light .xmind-embed-container .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
   background-color: rgba(0, 0, 0, 0.02);
   border-color: rgba(0, 0, 0, 0.07);
+}
+
+.xmind-embed-clickable {
+  cursor: pointer !important;
 }
 
 /* --------------------------------------------------------------------------

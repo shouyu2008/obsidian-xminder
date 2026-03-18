@@ -9,6 +9,7 @@ import {
 } from "obsidian";
 import { XMindView, XMIND_VIEW_TYPE } from "./views/XMindView";
 import { registerEmbedProcessor } from "./markdown/EmbedProcessor";
+import { xmindLivePreviewExtension } from "./markdown/LivePreviewProcessor";
 import { XMindSettingTab, DEFAULT_SETTINGS } from "./settings";
 import type { XMindPluginSettings } from "./settings";
 import { serializeXMind } from "./xmind/serializer";
@@ -49,6 +50,7 @@ export default class XMindPlugin extends Plugin {
     );
 
     registerEmbedProcessor(this);
+    this.registerEditorExtension(xmindLivePreviewExtension(this));
 
     this.addCommand({
       id: "create-new-xmind",
