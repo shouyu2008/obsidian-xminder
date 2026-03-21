@@ -16,12 +16,13 @@ XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as i
 - **Canvas panning** — toggle drag mode from the left toolbar to pan the canvas with left-click
 - **Auto-save** — changes are written back to the `.xmind` file after a configurable debounce delay (default 500 ms)
 - **Manual save** — `Ctrl/Cmd + S` saves immediately
-- **Markdown embed** — use `![[diagram.xmind]]` to render a read-only interactive preview inline in any note
+- **Markdown embed** — use `![[diagram.xmind]]` to render a read-only interactive preview inline in any note (supports both Reading mode and Live Preview)
 - **Markdown link** — use `[[diagram.xmind]]` to create a clickable link that opens XMind view
 - **Export to Mermaid mindmap** — export mind map as Mermaid format copied to clipboard (can be pasted directly into notes for rendering)
 - **Open with XMind app** — right-click menu option to open `.xmind` files with external XMind application (configurable in settings)
 - **Theme follow** — automatically switches between light and dark themes with Obsidian
-- **Responsive layout** — automatically re-fits the view when splitting or resizing panes
+- **Responsive layout** — automatically re-fits the view when splitting or resizing panes; custom layout engine ensures proper node positioning
+- **Internationalization** — full support for English and Chinese interfaces (auto-detected from Obsidian settings)
 - **XMind format compatibility** — supports both `content.json` (XMind 8+ / ZEN) and legacy `content.xml` formats
 - **Cross-platform** — works on macOS, Windows, Linux, and Obsidian Mobile
 
@@ -125,14 +126,17 @@ obsidian-xminder/
 ├── src/
 │   ├── main.ts                  # Plugin entry point
 │   ├── settings.ts              # Settings definition and UI tab
+│   ├── i18n.ts                  # Internationalization (English/Chinese)
 │   ├── xmind/
 │   │   ├── types.ts             # Internal type definitions
 │   │   ├── parser.ts            # .xmind → XMindData (ZIP + JSON/XML)
 │   │   └── serializer.ts        # XMindData → .xmind (ZIP)
 │   ├── views/
-│   │   └── XMindView.ts         # FileView with mind-elixir renderer + custom layout
+│   │   ├── XMindView.ts         # FileView with mind-elixir renderer
+│   │   └── LayoutEngine.ts      # Custom layout engine for node positioning
 │   └── markdown/
-│       └── EmbedProcessor.ts    # ![[]] / [[]] post-processor
+│       ├── EmbedProcessor.ts    # ![[]] / [[]] post-processor for Reading mode
+│       └── LivePreviewProcessor.ts  # CodeMirror extension for Live Preview
 ├── dist/                        # Production build output
 │   ├── main.js
 │   ├── manifest.json

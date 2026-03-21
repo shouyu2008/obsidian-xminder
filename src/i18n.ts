@@ -19,6 +19,8 @@ interface I18nStrings {
     centralTopic: string;
     mainTopic1: string;
     mainTopic2: string;
+    mainTopic3: string;
+    mainTopic4: string;
     canvas: string;
     mindMap: string;
   };
@@ -98,6 +100,8 @@ const zhStrings: I18nStrings = {
     centralTopic: "中心主题",
     mainTopic1: "主主题 1",
     mainTopic2: "主主题 2",
+    mainTopic3: "主主题 3",
+    mainTopic4: "主主题 4",
     canvas: "画布",
     mindMap: "思维导图",
   },
@@ -177,6 +181,8 @@ const enStrings: I18nStrings = {
     centralTopic: "Central Topic",
     mainTopic1: "Main Topic 1",
     mainTopic2: "Main Topic 2",
+    mainTopic3: "Main Topic 3",
+    mainTopic4: "Main Topic 4",
     canvas: "Canvas",
     mindMap: "Mind Map",
   },
