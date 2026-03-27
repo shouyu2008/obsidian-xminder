@@ -833,8 +833,16 @@ export class XMindView extends FileView {
     const data = this.mind.getData();
     if (!data || !data.nodeData) return "";
     
-    const title = this.allSheets[this.activeSheetIndex]?.title || "Mind Map";
-    const mermaidContent = `mindmap\n  root(("${title}"))\n` + mindElixirNodeToMermaid(data.nodeData, 0);
+    const rootNode = data.nodeData;
+    const rootTopic = escapeMermaid(rootNode.topic || "Mind Map");
+    // Use the escaped root topic in a circle shape
+    let mermaidContent = `mindmap\n  ((${rootTopic}))\n`;
+    
+    if (rootNode.note) {
+      mermaidContent += `    ::note(${escapeMermaid(rootNode.note)})\n`;
+    }
+    
+    mermaidContent += mindElixirNodeToMermaid(rootNode, 0);
     return `\`\`\`mermaid\n${mermaidContent}\`\`\``;
   }
 
@@ -934,17 +942,28 @@ function mapMENodeToXMind(node: NodeObj): XMindNode {
   return xnode;
 }
 
+export function escapeMermaid(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\n/g, " ")       // Mindmap nodes must be single line
+    .replace(/"/g, "")         // Remove double quotes as they cause &quot; issues
+    .replace(/[()\[\]{}]/g, "") // Remove shape delimiters
+    .replace(/;/g, " ")        // Remove semicolons
+    .trim();
+}
+
 function mindElixirNodeToMermaid(node: NodeObj, depth: number): string {
   const indent = "  ".repeat(depth + 2);
   let result = "";
   
   if (node.children && node.children.length > 0) {
     for (const child of node.children) {
-      result += `${indent}${child.topic}\n`;
+      const escapedTopic = escapeMermaid(child.topic);
+      result += `${indent}${escapedTopic}\n`;
       if (child.note) {
-        result += `${indent}  ::note(${child.note.replace(/\n/g, " ").replace(/\[/g, "").replace(/\]/g, "")})\n`;
+        result += `${indent}  ::note(${escapeMermaid(child.note)})\n`;
       }
-      if (child.children) {
+      if (child.children && child.children.length > 0) {
         result += mindElixirNodeToMermaid(child, depth + 1);
       }
     }

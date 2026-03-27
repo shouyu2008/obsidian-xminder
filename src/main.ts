@@ -7,7 +7,7 @@ import {
   Notice,
   addIcon,
 } from "obsidian";
-import { XMindView, XMIND_VIEW_TYPE } from "./views/XMindView";
+import { XMindView, XMIND_VIEW_TYPE, escapeMermaid } from "./views/XMindView";
 import { registerEmbedProcessor } from "./markdown/EmbedProcessor";
 import { xmindLivePreviewExtension } from "./markdown/LivePreviewProcessor";
 import { XMindSettingTab, DEFAULT_SETTINGS } from "./settings";
@@ -280,9 +280,18 @@ export default class XMindPlugin extends Plugin {
       const multiSheet = await parseXMind(buffer);
       const t = i18n.t();
       const md = multiSheet.sheets.map((sheet, i) => {
-        const title = sheet.title || `${t.defaults.canvas} ${i + 1}`;
-        const prefix = multiSheet.sheets.length > 1 ? `# ${title}\n\n` : "";
-        const mermaidContent = `mindmap\n  root(("${title}"))\n` + xmindNodeToMarkdown(sheet.rootTopic, 0);
+        const sheetTitle = sheet.title || `${t.defaults.canvas} ${i + 1}`;
+        const prefix = multiSheet.sheets.length > 1 ? `# ${sheetTitle}\n\n` : "";
+        
+        const rootNode = sheet.rootTopic;
+        const rootTopic = escapeMermaid(rootNode.title || "Mind Map");
+        let mermaidContent = `mindmap\n  ((${rootTopic}))\n`;
+        
+        if (rootNode.notes) {
+          mermaidContent += `    ::note(${escapeMermaid(rootNode.notes)})\n`;
+        }
+        
+        mermaidContent += xmindNodeToMarkdown(rootNode, 0);
         return prefix + `\`\`\`mermaid\n${mermaidContent}\`\`\``;
       }).join("\n\n");
       this.exportMarkdownToClipboard(md);
@@ -322,11 +331,12 @@ function xmindNodeToMarkdown(node: XMindNode, depth: number): string {
   
   if (node.children && node.children.length > 0) {
     for (const child of node.children) {
-      result += `${indent}${child.title}\n`;
+      const escapedTitle = escapeMermaid(child.title);
+      result += `${indent}${escapedTitle}\n`;
       if (child.notes) {
-        result += `${indent}  ::note(${child.notes.replace(/\n/g, " ").replace(/\[/g, "").replace(/\]/g, "")})\n`;
+        result += `${indent}  ::note(${escapeMermaid(child.notes)})\n`;
       }
-      if (child.children) {
+      if (child.children && child.children.length > 0) {
         result += xmindNodeToMarkdown(child, depth + 1);
       }
     }
