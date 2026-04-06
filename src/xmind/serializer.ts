@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import type { XMindMultiSheetData, XMindNode, XMindContentJsonTopic } from "./types";
 import { i18n } from "../i18n";
+import manifest from "../../manifest.json";
 
 /**
  * Serialize XMindMultiSheetData back to a .xmind file (ArrayBuffer).
@@ -16,8 +17,8 @@ export async function serializeXMind(data: XMindMultiSheetData): Promise<ArrayBu
   // Write minimal metadata.json
   const metadata = {
     creator: {
-      name: "shouyu2008",
-      version: "1.0.5",
+      name: manifest.author || "shouyu2008",
+      version: manifest.version,
     },
   };
   zip.file("metadata.json", JSON.stringify(metadata));

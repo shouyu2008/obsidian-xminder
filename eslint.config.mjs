@@ -6,6 +6,9 @@ import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
 
 export default defineConfig([
   {
+    ignores: ["dist/**", "node_modules/**", "*.js", "*.mjs"],
+  },
+  {
     linterOptions: {
       reportUnusedDisableDirectives: "error",
     },

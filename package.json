@@ -1,6 +1,6 @@
 {
   "name": "obsidian-xminder",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "supports functions such as creating, viewing, editing XMind files, and embedding them into Markdown.",
   "main": "main.js",
   "author": {
