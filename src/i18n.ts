@@ -8,11 +8,13 @@ interface I18nStrings {
     exportAsMarkdown: string;
     fitToView: string;
     saveFile: string;
+    exportAsCanvas: string;
   };
   menus: {
     openWithXMind: string;
     exportAsMarkdown: string;
     createNewXMind: string;
+    exportAsCanvas: string;
   };
   defaults: {
     newMindMap: string;
@@ -33,6 +35,7 @@ interface I18nStrings {
     saved: string;
     saveFailed: string;
     loadFailed: string;
+    exportedToCanvas: string;
     error: string;
   };
   settings: {
@@ -89,11 +92,13 @@ const zhStrings: I18nStrings = {
     exportAsMarkdown: "导出 XMind 为 Mermaid 脑图",
     fitToView: "适配 XMind 视图",
     saveFile: "保存 XMind 文件",
+    exportAsCanvas: "导出 XMind 为 Obsidian Canvas",
   },
   menus: {
     openWithXMind: "用 XMind 打开",
     exportAsMarkdown: "导出为 Mermaid 脑图",
     createNewXMind: "新建 XMind 脑图",
+    exportAsCanvas: "导出为 Obsidian Canvas",
   },
   defaults: {
     newMindMap: "新建思维导图",
@@ -114,6 +119,7 @@ const zhStrings: I18nStrings = {
     saved: "XMinder：已保存。",
     saveFailed: "XMinder：保存失败：{error}",
     loadFailed: "XMinder：加载失败：{error}",
+    exportedToCanvas: "XMinder：已导出为 {path}",
     error: "XMinder 错误：{error}",
   },
   settings: {
@@ -170,11 +176,13 @@ const enStrings: I18nStrings = {
     exportAsMarkdown: "Export XMind as Mermaid Mindmap",
     fitToView: "Fit XMind View",
     saveFile: "Save XMind File",
+    exportAsCanvas: "Export XMind as Obsidian Canvas",
   },
   menus: {
     openWithXMind: "Open with XMind",
     exportAsMarkdown: "Export as Mermaid Mindmap",
     createNewXMind: "Create New XMind Mindmap",
+    exportAsCanvas: "Export as Obsidian Canvas",
   },
   defaults: {
     newMindMap: "New Mind Map",
@@ -195,6 +203,7 @@ const enStrings: I18nStrings = {
     saved: "XMinder: Saved.",
     saveFailed: "XMinder: Failed to save: {error}",
     loadFailed: "XMinder: Failed to load: {error}",
+    exportedToCanvas: "XMinder: Exported to {path}",
     error: "XMinder Error: {error}",
   },
   settings: {

@@ -5,11 +5,13 @@ import {
   Notice,
   normalizePath,
   Scope,
+  Menu,
 } from "obsidian";
 import MindElixir from "mind-elixir";
 import type { MindElixirData, MindElixirInstance, NodeObj, Topic } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
 import { serializeXMind } from "../xmind/serializer";
+import { convertToCanvas } from "../xmind/canvas";
 import type { XMindNode, XMindData } from "../xmind/types";
 import type XMindPlugin from "../main";
 import { i18n } from "../i18n";
@@ -56,6 +58,51 @@ export class XMindView extends FileView {
 
   getViewType(): string {
     return XMIND_VIEW_TYPE;
+  }
+
+  onPaneMenu(menu: Menu, source: string): void {
+    const t = i18n.t();
+    
+    if (this.plugin.settings.showOpenAsXMind) {
+      menu.addItem((item) => {
+        item
+          .setTitle(t.menus.openWithXMind)
+          .setIcon("xmind-icon")
+          .setSection("xmind-actions")
+          .onClick(() => {
+            const app = this.app as any;
+            app.openWithDefaultApp?.(this.file?.path);
+          });
+      });
+    }
+
+    menu.addItem((item) => {
+      item
+        .setTitle(t.menus.exportAsMarkdown)
+        .setIcon("file-text")
+        .setSection("xmind-actions")
+        .onClick(() => {
+          const md = this.exportAsMarkdown();
+          if (md) {
+            this.plugin.exportMarkdownToClipboard(md);
+          }
+        });
+    });
+
+    menu.addItem((item) => {
+      item
+        .setTitle(t.menus.exportAsCanvas)
+        .setIcon("layout-dashboard")
+        .setSection("xmind-actions")
+        .onClick(async () => {
+          const canvas = this.exportAsCanvas();
+          if (canvas) {
+            await this.plugin.saveCanvasFile(this.file!, canvas);
+          }
+        });
+    });
+
+    super.onPaneMenu(menu, source);
   }
 
   getDisplayText(): string {
@@ -844,6 +891,17 @@ export class XMindView extends FileView {
     
     mermaidContent += mindElixirNodeToMermaid(rootNode, 0);
     return `\`\`\`mermaid\n${mermaidContent}\`\`\``;
+  }
+
+  /** Export current mind map data as Obsidian Canvas (.canvas) */
+  exportAsCanvas(): string {
+    if (!this.mind) return "";
+    this.syncCurrentSheetData();
+    const sheet = this.allSheets[this.activeSheetIndex];
+    if (!sheet) return "";
+    
+    const canvasData = convertToCanvas(sheet);
+    return JSON.stringify(canvasData, null, 2);
   }
 
   /** Fit the diagram to the viewport */

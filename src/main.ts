@@ -77,6 +77,22 @@ export default class XMindPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "export-xmind-as-canvas",
+      name: i18n.t().commands.exportAsCanvas || "Export to Canvas",
+      checkCallback: (checking: boolean) => {
+        const view = this.getActiveXMindView();
+        if (!view) return false;
+        if (!checking) {
+          const canvas = view.exportAsCanvas();
+          if (canvas) {
+            void this.saveCanvasFile(view.file!, canvas);
+          }
+        }
+        return true;
+      },
+    });
+
+    this.addCommand({
       id: "xmind-fit-to-view",
       name: i18n.t().commands.fitToView,
       checkCallback: (checking: boolean) => {
@@ -137,6 +153,15 @@ export default class XMindPlugin extends Plugin {
             .setIcon("file-text")
             .onClick(async () => {
               await this.exportFileAsMarkdown(abstractFile);
+            });
+        });
+
+        menu.addItem((item) => {
+          item
+            .setTitle(i18n.t().menus.exportAsCanvas || "Export to Canvas")
+            .setIcon("layout-dashboard")
+            .onClick(async () => {
+              await this.exportFileAsCanvas(abstractFile);
             });
         });
       })
@@ -301,7 +326,7 @@ export default class XMindPlugin extends Plugin {
     }
   }
 
-  private exportMarkdownToClipboard(md: string): void {
+  public exportMarkdownToClipboard(md: string): void {
     const t = i18n.t();
     const navigator = typeof window !== 'undefined' ? window.navigator : null;
     if (navigator?.clipboard) {
@@ -311,6 +336,56 @@ export default class XMindPlugin extends Plugin {
         const errorMsg = err instanceof Error ? err.message : String(err);
         new Notice(t.notices.copyFailed.replace("{error}", errorMsg));
       });
+    }
+  }
+
+  /** Export a .xmind file as Canvas (.canvas) */
+  private async exportFileAsCanvas(file: TFile): Promise<void> {
+    const existing = this.app.workspace
+      .getLeavesOfType(XMIND_VIEW_TYPE)
+      .find((leaf) => (leaf.view as XMindView).file?.path === file.path);
+
+    if (existing) {
+      const canvas = (existing.view as XMindView).exportAsCanvas();
+      if (canvas) {
+        await this.saveCanvasFile(file, canvas);
+        return;
+      }
+    }
+
+    try {
+      const buffer = await this.app.vault.adapter.readBinary(normalizePath(file.path));
+      const multiSheet = await parseXMind(buffer);
+      const firstSheet = multiSheet.sheets[0];
+      if (!firstSheet) return;
+
+      const { convertToCanvas } = await import("./xmind/canvas");
+      const canvasData = convertToCanvas(firstSheet);
+      await this.saveCanvasFile(file, canvasData);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      new Notice(i18n.t().notices.exportFailed.replace("{name}", file.name).replace("{error}", errorMsg));
+    }
+  }
+
+  public async saveCanvasFile(sourceFile: TFile, canvasData: string | object): Promise<void> {
+    const canvasContent = typeof canvasData === "string" ? canvasData : JSON.stringify(canvasData, null, 2);
+    const canvasPath = sourceFile.path.replace(/\.xmind$/i, ".canvas");
+    
+    // Check if file exists and handle naming if it does
+    let finalPath = canvasPath;
+    let idx = 1;
+    while (this.app.vault.getAbstractFileByPath(finalPath)) {
+      finalPath = canvasPath.replace(/\.canvas$/, ` ${idx++}.canvas`);
+    }
+
+    await this.app.vault.create(finalPath, canvasContent);
+    new Notice(i18n.t().notices.exportedToCanvas.replace("{path}", finalPath));
+    
+    // Optionally open the new canvas file
+    const newFile = this.app.vault.getAbstractFileByPath(finalPath);
+    if (newFile instanceof TFile) {
+      await this.app.workspace.getLeaf("tab").openFile(newFile);
     }
   }
 }
