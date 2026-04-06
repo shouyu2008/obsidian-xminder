@@ -1,11 +1,9 @@
-// eslint-disable-next-line import/no-extraneous-dependencies -- These are provided by Obsidian's environment
 import {
   Decoration,
   DecorationSet,
   EditorView,
   WidgetType,
 } from "@codemirror/view";
-// eslint-disable-next-line import/no-extraneous-dependencies -- These are provided by Obsidian's environment
 import { StateField, EditorState, Prec } from "@codemirror/state";
 import { TFile, normalizePath, editorLivePreviewField } from "obsidian";
 import MindElixir from "mind-elixir";

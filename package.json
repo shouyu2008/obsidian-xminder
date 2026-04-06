@@ -24,6 +24,10 @@
     "jszip": "3.10.1",
     "mind-elixir": "^4.3.3"
   },
+  "peerDependencies": {
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0"
+  },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.7.1",
     "@types/jszip": "^3.4.0",

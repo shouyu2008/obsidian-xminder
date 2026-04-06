@@ -55,6 +55,7 @@ export default defineConfig([
         "@typescript-eslint/no-explicit-any",
         "@microsoft/sdl/no-inner-html",
       ],
+      "import/no-extraneous-dependencies": "off",
     },
   },
   {
