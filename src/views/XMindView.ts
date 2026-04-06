@@ -420,6 +420,7 @@ export class XMindView extends FileView {
           ["Ctrl+V", t.view.paste],
           ["Ctrl+Z", t.view.undo],
           ["Ctrl+S", t.view.save],
+          [t.view.doubleClick, t.view.editNode],
         ];
         
         for (const [key, desc] of shortcuts) {

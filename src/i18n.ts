@@ -72,6 +72,8 @@ interface I18nStrings {
     fullscreen: string;
     switchToPointer: string;
     switchToDrag: string;
+    editNode: string;
+    doubleClick: string;
   };
   embed: {
     loadingXMind: string;
@@ -156,6 +158,8 @@ const zhStrings: I18nStrings = {
     fullscreen: "全屏",
     switchToPointer: "切换为指针模式",
     switchToDrag: "切换为拖动画布",
+    editNode: "编辑节点",
+    doubleClick: "双击",
   },
   embed: {
     loadingXMind: "正在加载 XMind...",
@@ -240,6 +244,8 @@ const enStrings: I18nStrings = {
     fullscreen: "Fullscreen",
     switchToPointer: "Switch to Pointer Mode",
     switchToDrag: "Switch to Drag Canvas",
+    editNode: "Edit Node",
+    doubleClick: "Double Click",
   },
   embed: {
     loadingXMind: "Loading XMind...",
