@@ -10,6 +10,7 @@ import MindElixir from "mind-elixir";
 import type { MindElixirInstance } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
 import { xmindDataToMindElixir, XMIND_VIEW_TYPE } from "../views/XMindView";
+import type { XMindMultiSheetData } from "../xmind/types";
 import type XMindPlugin from "../main";
 import { i18n } from "../i18n";
 import { customLinkDiv } from "../views/LayoutEngine";
@@ -61,7 +62,7 @@ class XMindEmbedChild extends MarkdownRenderChild {
           normalizePath(this.file.path)
         );
         
-        const multiSheet = await parseXMind(buffer);
+        const multiSheet: XMindMultiSheetData = await parseXMind(buffer);
         const meData = xmindDataToMindElixir(multiSheet.sheets[0]);
         
         if (!this.containerEl.isConnected) return;

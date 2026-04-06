@@ -12,6 +12,7 @@ import MindElixir from "mind-elixir";
 import type { MindElixirInstance } from "mind-elixir";
 import { parseXMind } from "../xmind/parser";
 import { xmindDataToMindElixir } from "../views/XMindView";
+import type { XMindMultiSheetData } from "../xmind/types";
 import { customLinkDiv } from "../views/LayoutEngine";
 import type XMindPlugin from "../main";
 import { i18n } from "../i18n";
@@ -58,7 +59,7 @@ class XMindWidget extends WidgetType {
       const buffer = await this.plugin.app.vault.adapter.readBinary(
         normalizePath(this.file.path)
       );
-      const multiSheet = await parseXMind(buffer);
+      const multiSheet: XMindMultiSheetData = await parseXMind(buffer);
       const meData = xmindDataToMindElixir(multiSheet.sheets[0]);
       
       if (!container.isConnected) return;

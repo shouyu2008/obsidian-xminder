@@ -6,6 +6,7 @@ import {
   normalizePath,
   Scope,
   Menu,
+  App,
 } from "obsidian";
 import MindElixir from "mind-elixir";
 import type { MindElixirData, MindElixirInstance, NodeObj, Topic } from "mind-elixir";
@@ -22,6 +23,10 @@ export const XMIND_VIEW_TYPE = "xmind-view";
 
 // Debounce delay for auto-save (ms)
 const AUTO_SAVE_DELAY = 500;
+
+interface InternalApp extends App {
+  openWithDefaultApp?: (path: string) => void;
+}
 
 interface ExtendedMindElixirInstance {
   linkDiv?: (this: MindElixirInstance) => void;
@@ -70,8 +75,10 @@ export class XMindView extends FileView {
           .setIcon("xmind-icon")
           .setSection("xmind-actions")
           .onClick(() => {
-            const app = this.app as any;
-            app.openWithDefaultApp?.(this.file?.path);
+            const app = (this.app as InternalApp);
+            if (this.file) {
+              app.openWithDefaultApp?.(this.file.path);
+            }
           });
       });
     }
@@ -859,10 +866,7 @@ export class XMindView extends FileView {
       // Sync current sheet edits, then save all sheets
       this.syncCurrentSheetData();
       const buffer = await serializeXMind({ sheets: this.allSheets });
-      await this.app.vault.adapter.writeBinary(
-        normalizePath(this.file.path),
-        buffer
-      );
+      await this.app.vault.adapter.writeBinary(normalizePath(this.file.path), buffer);
       this.isDirty = false;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -870,11 +874,14 @@ export class XMindView extends FileView {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Commands exposed to main.ts
-  // -------------------------------------------------------------------------
+  private showError(msg: string): void {
+    this.contentEl.empty();
+    const div = this.contentEl.createDiv("xmind-error-msg");
+    div.textContent = i18n.t().notices.loadFailed.replace("{error}", msg);
+    new Notice(div.textContent);
+  }
 
-  /** Export current mind map data as Mermaid mindmap */
+  /** Export current mind map data as Mermaid code */
   exportAsMarkdown(): string {
     if (!this.mind) return "";
     const data = this.mind.getData();
@@ -909,94 +916,47 @@ export class XMindView extends FileView {
     this.mind?.scaleFit();
     this.mind?.toCenter();
   }
-
-  // -------------------------------------------------------------------------
-  // Helpers
-  // -------------------------------------------------------------------------
-
-  private showError(msg: string): void {
-    this.contentEl.empty();
-    const el = document.createElement("div");
-    el.className = "xmind-error";
-    el.textContent = i18n.t().notices.error.replace("{error}", msg);
-    this.contentEl.appendChild(el);
-    new Notice(i18n.t().notices.error.replace("{error}", msg));
-  }
 }
 
 // ---------------------------------------------------------------------------
-// Data conversion: XMindData <-> MindElixirData
+// MindElixir <-> XMind mapping
 // ---------------------------------------------------------------------------
 
 export function xmindDataToMindElixir(data: XMindData): MindElixirData {
   return {
-    nodeData: mapXMindNodeToME(data.rootTopic),
+    nodeData: xmindNodeToMindElixirNode(data.rootTopic),
   };
 }
 
-function mapXMindNodeToME(node: XMindNode): NodeObj {
-  const obj: NodeObj = {
+export function xmindNodeToMindElixirNode(node: XMindNode): NodeObj {
+  const meNode: NodeObj = {
     id: node.id,
     topic: node.title,
-    expanded: node.branch !== "folded",
+    children: (node.children || []).map(xmindNodeToMindElixirNode),
   };
-
-  if (node.href) obj.hyperLink = node.href;
-  if (node.labels && node.labels.length > 0) obj.tags = node.labels;
-  if (node.markers && node.markers.length > 0) obj.icons = node.markers;
-  if (node.notes) obj.note = node.notes;
-
-  if (node.style) {
-    obj.style = {};
-    if (node.style.background) obj.style.background = node.style.background;
-    if (node.style.color) obj.style.color = node.style.color;
-    if (node.style.fontSize) obj.style.fontSize = `${node.style.fontSize}px`;
-    if (node.style.fontWeight) obj.style.fontWeight = node.style.fontWeight;
+  if (node.notes) meNode.note = node.notes;
+  if (node.style?.background) {
+    meNode.style = { background: node.style.background };
   }
-
-  if (node.children && node.children.length > 0) {
-    obj.children = node.children.map(mapXMindNodeToME);
-  }
-
-  return obj;
+  return meNode;
 }
 
-export function mindElixirToXMindData(meData: MindElixirData): XMindData {
+function mindElixirToXMindData(data: MindElixirData): XMindData {
   return {
-    rootTopic: mapMENodeToXMind(meData.nodeData),
-    title: meData.nodeData.topic,
+    rootTopic: mindElixirNodeToXMindNode(data.nodeData),
   };
 }
 
-function mapMENodeToXMind(node: NodeObj): XMindNode {
+function mindElixirNodeToXMindNode(node: NodeObj): XMindNode {
   const xnode: XMindNode = {
     id: node.id,
     title: node.topic,
+    children: (node.children || []).map(mindElixirNodeToXMindNode),
   };
-
-  if (node.expanded === false) xnode.branch = "folded";
-  if (node.hyperLink) xnode.href = node.hyperLink;
-  if (node.tags && node.tags.length > 0) xnode.labels = node.tags;
-  if (node.icons && node.icons.length > 0) xnode.markers = node.icons;
   if (node.note) xnode.notes = node.note;
-
-  if (node.style) {
-    xnode.style = {};
-    if (node.style.background) xnode.style.background = node.style.background;
-    if (node.style.color) xnode.style.color = node.style.color;
-    if (node.style.fontSize) {
-      const size = parseInt(node.style.fontSize, 10);
-      if (!isNaN(size)) xnode.style.fontSize = size;
-    }
-    if (node.style.fontWeight) {
-      xnode.style.fontWeight = node.style.fontWeight as "bold" | "normal";
-    }
+  if (node.style?.background) {
+    xnode.style = { background: node.style.background };
   }
-
-  if (node.children && node.children.length > 0) {
-    xnode.children = node.children.map(mapMENodeToXMind);
-  }
-
   return xnode;
 }
 
@@ -1005,7 +965,7 @@ export function escapeMermaid(text: string): string {
   return text
     .replace(/\n/g, " ")       // Mindmap nodes must be single line
     .replace(/"/g, "")         // Remove double quotes as they cause &quot; issues
-    .replace(/[()\[\]{}]/g, "") // Remove shape delimiters
+    .replace(/[()[\]{}]/g, "") // Remove shape delimiters
     .replace(/;/g, " ")        // Remove semicolons
     .trim();
 }
