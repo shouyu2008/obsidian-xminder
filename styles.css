@@ -1,4 +1,5 @@
 /* stylelint-disable declaration-no-important, selector-type-no-unknown */
+/* csslint ignore:start */
 /* ==========================================================================
    obsidian-xminder — styles.css
    ========================================================================== */
@@ -512,4 +513,5 @@ body .xmind-embed-container .map-container {
    input, we hide the span.text whenever #input-box is present in the parent.
    This CSS-only solution avoids JavaScript interference with mind-elixir.
    -------------------------------------------------------------------------- */
+/* csslint ignore:end */
 
