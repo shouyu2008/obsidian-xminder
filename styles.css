@@ -1,3 +1,4 @@
+/* stylelint-disable declaration-no-important, selector-type-no-unknown */
 /* ==========================================================================
    obsidian-xminder — styles.css
    ========================================================================== */
@@ -512,7 +513,3 @@
    This CSS-only solution avoids JavaScript interference with mind-elixir.
    -------------------------------------------------------------------------- */
 
-/* Hide text span when input-box is present as a sibling in me-tpc */
-me-tpc:has(#input-box) span.text {
-   visibility: hidden !important;
-}
