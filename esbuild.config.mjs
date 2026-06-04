@@ -10,6 +10,69 @@ const nodeModulesPath = resolve(__dirname, "node_modules");
 
 // Custom plugin to resolve packages from local node_modules,
 // bypassing any Yarn PnP hooks that may be active in the parent environment.
+// Plugin to remove dynamic <script> element creations from bundled dependencies.
+// Obsidian's plugin review flags these as potential code obfuscation vectors.
+// In Electron/Obsidian, these code paths are never reached (MutationObserver /
+// MessageChannel are always available), but the reviewer does a static scan.
+const removeDynamicScriptPlugin = {
+  name: "remove-dynamic-script",
+  setup(build) {
+    // Handle the `immediate` library (dependency of jszip)
+    build.onLoad({ filter: /\/immediate\/lib\/index\.js$/ }, async (args) => {
+      const fs = await import("fs");
+      let source = await fs.promises.readFile(args.path, "utf8");
+      // Replace the entire else-if branch that creates a <script> element
+      // Original: else if ('document' in global && 'onreadystatechange' in global.document.createElement('script')) { ... }
+      source = source.replace(
+        /else if \('document' in global && 'onreadystatechange' in global\.document\.createElement\('script'\)\) \{[\s\S]*?\n  \} else/,
+        'else'
+      );
+      return { contents: source, loader: "js" };
+    });
+
+    // Handle the `setimmediate` library (dependency of mind-elixir)
+    build.onLoad({ filter: /\/setimmediate\/setImmediate\.js$/ }, async (args) => {
+      const fs = await import("fs");
+      let source = await fs.promises.readFile(args.path, "utf8");
+      // Replace the function body that creates <script> elements
+      source = source.replace(
+        /function installReadyStateChangeImplementation\(\) \{[\s\S]*?html\.appendChild\(script\);\n\s*\};?\n\s*\}/,
+        "function installReadyStateChangeImplementation() {\n        registerImmediate = function(handle) {\n            setTimeout(runIfPresent, 0, handle);\n        };\n    }"
+      );
+      // Replace the feature-detect check that uses createElement("script")
+      source = source.replace(
+        /else if \(doc && "onreadystatechange" in doc\.createElement\("script"\)\)/,
+        "else if (false)"
+      );
+      // Replace new Function() with a throw — in Obsidian, callbacks are always functions
+      source = source.replace(
+        /callback = new Function\("" \+ callback\);/,
+        'throw new TypeError("setImmediate: callback must be a function");'
+      );
+      return { contents: source, loader: "js" };
+    });
+
+    // Handle the `mind-elixir` library — replace document.write with DOM insertion
+    build.onLoad({ filter: /\/mind-elixir\/dist\/MindElixir\.js$/ }, async (args) => {
+      const fs = await import("fs");
+      let source = await fs.promises.readFile(args.path, "utf8");
+      // Replace document.write("<style>...") with document.head.appendChild
+      source = source.replace(
+        /document\.write\(\s*\n?\s*"<style>/g,
+        '(function(){var s=document.createElement("style");s.textContent="'
+      );
+      // This is a rough replacement — we need a different approach for the closing
+      // Revert and use a simpler strategy: just replace document.write with a safe alternative
+      source = await fs.promises.readFile(args.path, "utf8");
+      source = source.replace(
+        /document\.write\(\s*\n?\s*"(<style>[^]*?<\/style>)"\s*\n?\s*\)/,
+        'document.head.insertAdjacentHTML("beforeend", "$1")'
+      );
+      return { contents: source, loader: "js" };
+    });
+  },
+};
+
 const localResolvePlugin = {
   name: "local-resolve",
   setup(build) {
@@ -50,7 +113,7 @@ const context = await esbuild.context({
   entryPoints: ["src/main.ts"],
   bundle: true,
   nodePaths: [nodeModulesPath],
-  plugins: [localResolvePlugin],
+  plugins: [removeDynamicScriptPlugin, localResolvePlugin],
   external: [
     "obsidian",
     "electron",
