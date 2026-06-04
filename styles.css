@@ -26,9 +26,9 @@
 }
 
 /* mind-elixir creates a .map-container div inside the wrapper el */
-.xmind-mind-wrapper .map-container {
-  width: 100% !important;
-  height: 100% !important;
+body .xmind-mind-wrapper .map-container {
+  width: 100%;
+  height: 100%;
 }
 
 /* Ensure me-main fills the map-container */
@@ -56,19 +56,19 @@
    Markdown embed preview  ![[file.xmind]]
    -------------------------------------------------------------------------- */
 
-.xmind-embed-wrapper {
-  display: block !important;
+body .xmind-embed-wrapper {
+  display: block;
   width: 100%;
   margin: 0.75em 0;
   /* Override Obsidian's default file-embed inline styles */
-  padding: 0 !important;
-  max-width: 100% !important;
+  padding: 0;
+  max-width: 100%;
 }
 
 /* Ensure the wrapper takes proper block-level space in Live Preview */
 .cm-embed-block .xmind-embed-wrapper,
-.markdown-reading-view .xmind-embed-wrapper {
-  display: block !important;
+body .markdown-reading-view .xmind-embed-wrapper {
+  display: block;
 }
 
 .xmind-embed-container {
@@ -88,14 +88,14 @@
   box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
-.xmind-embed-container .map-container {
-  width: 100% !important;
-  height: 100% !important;
+body .xmind-embed-container .map-container {
+  width: 100%;
+  height: 100%;
 }
 
-.xmind-embed-container .map-container me-main {
-  width: 100% !important;
-  height: 100% !important;
+body .xmind-embed-container .map-container me-main {
+  width: 100%;
+  height: 100%;
 }
 
 .xmind-embed-container me-main {
@@ -110,8 +110,8 @@
 .xmind-embed-wrapper .file-embed-link,
 /* Fix: Hide Obsidian's default LP placeholders for XMind to avoid double-rendering */
 .markdown-source-view.mod-cm6 .cm-content [data-src$=".xmind"].internal-embed,
-.markdown-source-view.mod-cm6 .cm-content .internal-embed[src$=".xmind"] {
-  display: none !important;
+body .markdown-source-view.mod-cm6 .cm-content .internal-embed[src$=".xmind"] {
+  display: none;
 }
 
 /* Specific styling for Live Preview active line (cursor on link) */
@@ -235,86 +235,86 @@
 
 /* Horizontal level spacing (--gap = padding on each me-parent).
  * Larger value = more space between a parent node and its children. */
-.xmind-mind-wrapper .map-container {
-  --gap: 55px !important;
+body .xmind-mind-wrapper .map-container {
+  --gap: 55px;
 }
 
 /* Level-2 node distance from root (default margin: 45px 65px). */
-.xmind-mind-wrapper .map-container me-main > me-wrapper {
-  margin-left: 50px !important;
-  margin-right: 50px !important;
+body .xmind-mind-wrapper .map-container me-main > me-wrapper {
+  margin-left: 50px;
+  margin-right: 50px;
 }
 
 /* Ensure consistent horizontal spacing for both sides
  * Increase vertical breathing room to prevent node overlap with long text */
-.xmind-mind-wrapper .map-container me-children > me-wrapper {
-  margin-top: 8px !important;
-  margin-bottom: 8px !important;
+body .xmind-mind-wrapper .map-container me-children > me-wrapper {
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 /* Level 3 node topic: pill style */
 .xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc,
-.xmind-embed-container .map-container me-children > me-wrapper > me-parent > me-tpc {
+body .xmind-embed-container .map-container me-children > me-wrapper > me-parent > me-tpc {
   background-color: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
-  padding: 4px 12px !important;
+  padding: 4px 12px;
   color: var(--text-normal);
   white-space: nowrap;
 }
 
 /* Level 4+ node topic: lighter pill */
 .xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc,
-.xmind-embed-container .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
+body .xmind-embed-container .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
   background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
-  padding: 3px 10px !important;
+  padding: 3px 10px;
   color: var(--text-muted);
 }
 
 /* Node cursor: pointer on hover, text cursor when editing */
 .xmind-mind-wrapper .map-container me-tpc,
-.xmind-embed-container .map-container me-tpc {
-  cursor: pointer !important;
+body .xmind-embed-container .map-container me-tpc {
+  cursor: pointer;
 }
 .xmind-mind-wrapper .map-container #input-box,
 .xmind-mind-wrapper .map-container me-tpc[contenteditable],
 .xmind-mind-wrapper .map-container me-tpc[contenteditable="true"],
 .xmind-mind-wrapper .map-container me-tpc[contenteditable="plaintext-only"],
-.xmind-embed-container .map-container #input-box {
-  cursor: text !important;
+body .xmind-embed-container .map-container #input-box {
+  cursor: text;
 }
 
 /* Selected node — bright outline for all selected nodes (root, L1, L2+) */
 .xmind-mind-wrapper .map-container me-tpc.selected,
-.xmind-embed-container .map-container me-tpc.selected {
-  outline: 3px solid #4fc3f7 !important;
-  outline-offset: 2px !important;
-  border-color: #4fc3f7 !important;
-  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5) !important;
+body .xmind-embed-container .map-container me-tpc.selected {
+  outline: 3px solid #4fc3f7;
+  outline-offset: 2px;
+  border-color: #4fc3f7;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
 }
 
 /* Drag-and-drop insert preview — match selected style for all nodes including root */
-.xmind-mind-wrapper .map-container me-tpc .insert-preview.show {
-  background: none !important;
-  opacity: 1 !important;
+body .xmind-mind-wrapper .map-container me-tpc .insert-preview.show {
+  background: none;
+  opacity: 1;
 }
-.xmind-mind-wrapper .map-container me-tpc .insert-preview.in.show {
-  outline: 3px solid #4fc3f7 !important;
-  outline-offset: 2px !important;
-  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5) !important;
+body .xmind-mind-wrapper .map-container me-tpc .insert-preview.in.show {
+  outline: 3px solid #4fc3f7;
+  outline-offset: 2px;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
   border-radius: inherit;
-  height: 100% !important;
-  top: 0 !important;
+  height: 100%;
+  top: 0;
   pointer-events: none;
 }
 .xmind-mind-wrapper .map-container me-tpc .insert-preview.before.show,
-.xmind-mind-wrapper .map-container me-tpc .insert-preview.after.show {
-  height: 3px !important;
-  background: #4fc3f7 !important;
+body .xmind-mind-wrapper .map-container me-tpc .insert-preview.after.show {
+  height: 3px;
+  background: #4fc3f7;
   border-radius: 2px;
-  box-shadow: 0 0 6px rgba(79, 195, 247, 0.6) !important;
+  box-shadow: 0 0 6px rgba(79, 195, 247, 0.6);
 }
 
 /* Fix: Ensure root node drag feedback matches selected style.
@@ -322,17 +322,17 @@
  * feedback to before/after sibling lines. We force it to show the full selection
  * outline instead to maintain a clear parent-child drop target visual across 
  * the entire root node area, matching the selection design as requested. */
-.xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.show {
-  display: block !important;
-  height: 100% !important;
-  top: 0 !important;
-  bottom: auto !important;
-  outline: 3px solid #4fc3f7 !important;
-  outline-offset: 2px !important;
-  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5) !important;
+body .xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.show {
+  display: block;
+  height: 100%;
+  top: 0;
+  bottom: auto;
+  outline: 3px solid #4fc3f7;
+  outline-offset: 2px;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
   border-radius: inherit;
-  background: none !important;
-  opacity: 1 !important;
+  background: none;
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -349,8 +349,8 @@
   border-color: rgba(0, 0, 0, 0.07);
 }
 
-.xmind-embed-clickable {
-  cursor: pointer !important;
+body .xmind-embed-clickable {
+  cursor: pointer;
 }
 
 /* --------------------------------------------------------------------------
@@ -394,8 +394,8 @@
 }
 
 /* Hide all mind-elixir built-in toolbars (we build our own) */
-.xmind-mind-wrapper .map-container .mind-elixir-toolbar {
-  display: none !important;
+body .xmind-mind-wrapper .map-container .mind-elixir-toolbar {
+  display: none;
 }
 
 /* Left toolbar */
@@ -495,9 +495,9 @@
 }
 
 /* mind-elixir embed: .map-container inside embed container */
-.xmind-embed-container .map-container {
-  width: 100% !important;
-  height: 100% !important;
+body .xmind-embed-container .map-container {
+  width: 100%;
+  height: 100%;
 }
 
 .xmind-embed-container .map-container me-main {
