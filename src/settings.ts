@@ -6,12 +6,14 @@ export interface XMindPluginSettings {
   autoSaveDelay: number;
   embedHeight: number;
   showOpenAsXMind: boolean;
+  clipboardExportEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: XMindPluginSettings = {
   autoSaveDelay: 500,
   embedHeight: 320,
   showOpenAsXMind: true,
+  clipboardExportEnabled: true,
 };
 
 export class XMindSettingTab extends PluginSettingTab {
@@ -87,6 +89,18 @@ export class XMindSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.showOpenAsXMind)
           .onChange(async (value) => {
             this.plugin.settings.showOpenAsXMind = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName(t.settings.clipboardExport)
+      .setDesc(t.settings.clipboardExportDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.clipboardExportEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.clipboardExportEnabled = value;
             await this.plugin.saveSettings();
           })
       );

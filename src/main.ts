@@ -327,10 +327,14 @@ export default class XMindPlugin extends Plugin {
   }
 
   public exportMarkdownToClipboard(md: string): void {
+    if (!this.settings.clipboardExportEnabled) {
+      new Notice(i18n.t().notices.clipboardExportDisabled);
+      return;
+    }
     const t = i18n.t();
-    const navigator = typeof window !== 'undefined' ? window.navigator : null;
-    if (navigator?.clipboard) {
-      navigator.clipboard.writeText(md).then(() => {
+    const nav = typeof window !== 'undefined' ? window.navigator : null;
+    if (nav?.clipboard) {
+      nav.clipboard.writeText(md).then(() => {
         new Notice(t.notices.copiedToClipboard);
       }).catch((err) => {
         const errorMsg = err instanceof Error ? err.message : String(err);

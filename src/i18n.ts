@@ -32,6 +32,7 @@ interface I18nStrings {
     exportFailed: string;
     copiedToClipboard: string;
     copyFailed: string;
+    clipboardExportDisabled: string;
     saved: string;
     saveFailed: string;
     loadFailed: string;
@@ -49,6 +50,8 @@ interface I18nStrings {
     resetDefaultPx: string;
     showOpenWithXMind: string;
     showOpenWithXMindDesc: string;
+    clipboardExport: string;
+    clipboardExportDesc: string;
     usage: string;
     usageDesc: string;
     embedInteractivePreview: string;
@@ -118,6 +121,7 @@ const zhStrings: I18nStrings = {
     exportFailed: 'XMinder：导出"{name}"失败：{error}',
     copiedToClipboard: "XMinder：Mermaid 脑图已复制到剪贴板。",
     copyFailed: "XMinder：复制到剪贴板失败：{error}",
+    clipboardExportDisabled: "XMinder：剪贴板导出已禁用，请在设置中开启。",
     saved: "XMinder：已保存。",
     saveFailed: "XMinder：保存失败：{error}",
     loadFailed: "XMinder：加载失败：{error}",
@@ -135,6 +139,8 @@ const zhStrings: I18nStrings = {
     resetDefaultPx: "恢复默认值（{px} 像素）",
     showOpenWithXMind: '显示"用 XMind App 打开"菜单',
     showOpenWithXMindDesc: '在文件右键菜单中显示"用 XMind App 打开"，用外部 XMind 应用打开 .xmind 文件。已安装 XMind 应用时建议开启。',
+    clipboardExport: "启用剪贴板导出",
+    clipboardExportDesc: "将思维导图以 Mermaid 格式复制到系统剪贴板。关闭后导出为 Mermaid 脑图功能将不可用。",
     usage: "用法",
     usageDesc: "Markdown 笔记中支持的语法：",
     embedInteractivePreview: "— 嵌入交互式预览",
@@ -204,6 +210,7 @@ const enStrings: I18nStrings = {
     exportFailed: 'XMinder: Failed to export "{name}": {error}',
     copiedToClipboard: "XMinder: Mermaid mindmap copied to clipboard.",
     copyFailed: "XMinder: Failed to copy to clipboard: {error}",
+    clipboardExportDisabled: "XMinder: Clipboard export is disabled. Please enable it in settings.",
     saved: "XMinder: Saved.",
     saveFailed: "XMinder: Failed to save: {error}",
     loadFailed: "XMinder: Failed to load: {error}",
@@ -221,6 +228,8 @@ const enStrings: I18nStrings = {
     resetDefaultPx: "Reset to default ({px} px)",
     showOpenWithXMind: 'Show "Open with XMind App" menu',
     showOpenWithXMindDesc: 'Show "Open with XMind App" in the file context menu to open .xmind files with the external XMind application. Recommended if XMind app is installed.',
+    clipboardExport: "Enable Clipboard Export",
+    clipboardExportDesc: "Copy the mind map as Mermaid format to the system clipboard. When disabled, the export as Mermaid mindmap feature will be unavailable.",
     usage: "Usage",
     usageDesc: "Supported syntax in Markdown notes:",
     embedInteractivePreview: "— Embed interactive preview",
