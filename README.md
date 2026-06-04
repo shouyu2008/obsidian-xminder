@@ -8,7 +8,7 @@
 
 ## Introduction
 
-XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as interactive, editable mind maps without leaving your note-taking workflow. Changes are auto-saved back to the original `.xmind` format, keeping your files compatible with the XMind desktop application.
+XMinder brings full mind map support to Obsidian. Create or open `.xmind` files as interactive, editable mind maps without leaving your note-taking workflow. All changes are auto-saved back to the original `.xmind` format, keeping your files compatible with the XMind desktop application.
 
 ---
 
@@ -34,7 +34,7 @@ XMinder brings full XMind mind map support to Obsidian. Open `.xmind` files as i
 
 ---
 
-## User Guide
+## Create & Open
 
 ### Opening an XMind File
 
