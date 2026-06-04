@@ -68,7 +68,7 @@ class XMindEmbedChild extends MarkdownRenderChild {
         if (!this.containerEl.isConnected) return;
         loading.remove();
 
-        const isDark = document.body.classList.contains("theme-dark");
+        const isDark = activeDocument.body.classList.contains("theme-dark");
         this.mind = new MindElixir({
           el: this.contentEl,
           direction: MindElixir.SIDE,
@@ -78,7 +78,7 @@ class XMindEmbedChild extends MarkdownRenderChild {
           toolBar: false,
           keypress: false,
           theme: isDark ? MindElixir.DARK_THEME : MindElixir.THEME,
-          selectionContainer: document.body,
+          selectionContainer: activeDocument.body,
         });
 
         // Inject shared layout engine
@@ -191,7 +191,7 @@ export function registerEmbedProcessor(plugin: XMindPlugin): void {
           target.setCssStyles({ display: "none" });
           
           // Create wrapper and manage it via lifecycle
-          const wrapper = document.createElement("div");
+          const wrapper = createDiv();
           target.parentElement?.insertBefore(wrapper, target.nextSibling);
           ctx.addChild(new XMindEmbedChild(wrapper, resolvedFile, plugin));
         }

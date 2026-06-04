@@ -1,9 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
 import { fileURLToPath } from "url";
 import { dirname, resolve, join } from "path";
-import { createRequire } from "module";
+import { createRequire, builtinModules as builtins } from "module";
 import { cpSync, mkdirSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

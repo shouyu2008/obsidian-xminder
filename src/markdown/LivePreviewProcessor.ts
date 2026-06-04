@@ -24,14 +24,14 @@ class XMindWidget extends WidgetType {
     super();
   }
 
-  toDOM(view: EditorView): HTMLElement {
-    const container = document.createElement("div");
+  toDOM(_view: EditorView): HTMLElement {
+    const container = createDiv();
     container.className = "xmind-embed-wrapper xmind-lp-embed xmind-embed-block";
     if (this.isBlockWidget) {
       container.addClass("xmind-lp-active");
     }
     
-    const contentContainer = document.createElement("div");
+    const contentContainer = createDiv();
     contentContainer.className = "xmind-embed-container";
     const height = this.plugin.settings.embedHeight ?? 400;
     contentContainer.setCssStyles({
@@ -42,7 +42,7 @@ class XMindWidget extends WidgetType {
     
     container.appendChild(contentContainer);
     
-    const loading = document.createElement("div");
+    const loading = createDiv();
     loading.className = "xmind-embed-loading";
     loading.textContent = i18n.t().embed.loadingXMind;
     contentContainer.appendChild(loading);
@@ -63,7 +63,7 @@ class XMindWidget extends WidgetType {
       if (!container.isConnected) return;
       loading.remove();
       
-      const isDark = document.body.classList.contains("theme-dark");
+      const isDark = activeDocument.body.classList.contains("theme-dark");
       const mind: MindElixirInstance = new MindElixir({
         el: container,
         direction: MindElixir.SIDE,
@@ -73,14 +73,14 @@ class XMindWidget extends WidgetType {
         toolBar: false,
         keypress: false,
         theme: isDark ? MindElixir.DARK_THEME : MindElixir.THEME,
-        selectionContainer: document.body,
+        selectionContainer: activeDocument.body,
       });
       
       (mind as unknown as { linkDiv: (this: MindElixirInstance) => void }).linkDiv = customLinkDiv;
       mind.init(meData);
       
       // Auto-fit
-      setTimeout(() => {
+      activeWindow.setTimeout(() => {
         if (container.isConnected) {
           mind.scaleFit();
           mind.toCenter();

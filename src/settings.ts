@@ -94,7 +94,7 @@ export class XMindSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName(t.settings.usage)
       .setHeading();
-    const info = containerEl.createEl("div", { cls: "xmind-settings-info" });
+    const info = containerEl.createDiv({ cls: "xmind-settings-info" });
     info.createEl("p", {
       text: t.settings.usageDesc,
     });

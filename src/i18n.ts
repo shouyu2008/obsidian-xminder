@@ -1,4 +1,4 @@
-import type { App } from "obsidian";
+import { getLanguage, type App } from "obsidian";
 
 export type Locale = "zh" | "en";
 
@@ -261,11 +261,7 @@ const enStrings: I18nStrings = {
 };
 
 function getObsidianLocale(app: App): Locale {
-  if (typeof window !== "undefined" && window.localStorage) {
-    const storedLang = window.localStorage.getItem("language");
-    if (storedLang) return storedLang.startsWith("zh") ? "zh" : "en";
-  }
-  const lang = (app.vault as unknown as { config?: { locale?: string } }).config?.locale ?? "en";
+  const lang = getLanguage();
   return lang.startsWith("zh") ? "zh" : "en";
 }
 

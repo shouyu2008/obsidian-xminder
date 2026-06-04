@@ -32,7 +32,6 @@
     "@eslint-community/eslint-plugin-eslint-comments": "^4.7.1",
     "@types/jszip": "^3.4.0",
     "@types/node": "^16.11.6",
-    "builtin-modules": "3.3.0",
     "esbuild": "0.21.5",
     "eslint": "^10.0.3",
     "eslint-plugin-obsidianmd": "^0.1.9",

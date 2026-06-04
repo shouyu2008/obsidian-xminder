@@ -47,9 +47,9 @@ interface ExtendedMindElixirInstance {
 export class XMindView extends FileView {
   private plugin: XMindPlugin;
   private mind: MindElixirInstance | null = null;
-  private saveTimer: ReturnType<typeof setTimeout> | null = null;
-  private _resizeTimer: ReturnType<typeof setTimeout> | null = null;
-  private _rootUpdateTimer: ReturnType<typeof setTimeout> | null = null;
+  private saveTimer: number | null = null;
+  private _resizeTimer: number | null = null;
+  private _rootUpdateTimer: number | null = null;
   private isDirty = false;
   /** All sheets from the current .xmind file */
   private allSheets: XMindData[] = [];
@@ -218,11 +218,11 @@ export class XMindView extends FileView {
 
     // Use document.createElement so the element passes mind-elixir's
     // [object HTMLDivElement] type check reliably in Electron/Obsidian.
-    const wrapper = document.createElement("div");
+    const wrapper = createDiv();
     wrapper.className = "xmind-mind-wrapper";
     this.contentEl.appendChild(wrapper);
 
-    const isDark = document.body.classList.contains("theme-dark");
+    const isDark = activeDocument.body.classList.contains("theme-dark");
 
     const options = {
       el: wrapper,
@@ -234,7 +234,7 @@ export class XMindView extends FileView {
       keypress: true,
       allowUndo: true,
       theme: isDark ? MindElixir.DARK_THEME : MindElixir.THEME,
-      selectionContainer: document.body,  // fix selection rect offset (avoid scroll/transform issues)
+      selectionContainer: activeDocument.body,  // fix selection rect offset (avoid scroll/transform issues)
     };
 
     try {
@@ -358,17 +358,17 @@ export class XMindView extends FileView {
             renderSvg(wrapper, icon);
             return;
           }
-          const iconWrapper = document.createElement("div");
+          const iconWrapper = createDiv();
           iconWrapper.className = "xmind-toolbar-icon";
           renderSvg(iconWrapper, icon);
           btn.replaceChildren(iconWrapper);
         };
 
         const makeBtn = (icon: string, title: string): HTMLButtonElement => {
-          const btn = document.createElement("button");
+          const btn = createEl("button");
           btn.className = "xmind-toolbar-btn";
           btn.title = title;
-          const iconWrapper = document.createElement("div");
+          const iconWrapper = createDiv();
           iconWrapper.className = "xmind-toolbar-icon";
           renderSvg(iconWrapper, icon);
           btn.appendChild(iconWrapper);
@@ -377,7 +377,7 @@ export class XMindView extends FileView {
 
         const t = i18n.t();
 
-        const leftBar = document.createElement("div");
+        const leftBar = createDiv();
         leftBar.className = "xmind-toolbar-left";
 
         const dragBtn = makeBtn(ICON_HAND, t.view.dragCanvas);
@@ -402,16 +402,16 @@ export class XMindView extends FileView {
 
         container.appendChild(leftBar);
 
-        const helpPanel = document.createElement("div");
+        const helpPanel = createDiv();
         helpPanel.className = "xmind-help-panel";
         helpPanel.setCssStyles({ display: "none" });
         
-        const helpTitle = document.createElement("div");
+        const helpTitle = createDiv();
         helpTitle.className = "xmind-help-title";
         helpTitle.textContent = t.view.shortcuts;
         helpPanel.appendChild(helpTitle);
         
-        const helpTable = document.createElement("table");
+        const helpTable = createEl("table");
         helpTable.className = "xmind-help-table";
         const shortcuts = [
           ["Tab", t.view.addChildNode],
@@ -427,7 +427,7 @@ export class XMindView extends FileView {
           const row = helpTable.insertRow();
           const keyCell = row.insertCell();
           const descCell = row.insertCell();
-          const keybd = document.createElement("kbd");
+          const keybd = createEl("kbd");
           keybd.textContent = key;
           keyCell.appendChild(keybd);
           descCell.textContent = desc;
@@ -438,7 +438,7 @@ export class XMindView extends FileView {
 
         // Click anywhere outside help panel to close it
         // Use capture phase to ensure this runs before pan mode's stopPropagation
-        document.addEventListener("mousedown", (e: MouseEvent) => {
+        activeDocument.addEventListener("mousedown", (e: MouseEvent) => {
           if (helpPanel.style.display === "none") return;
           const target = e.target as HTMLElement;
           if (!helpPanel.contains(target) && target !== helpBtn && !helpBtn.contains(target)) {
@@ -448,7 +448,7 @@ export class XMindView extends FileView {
 
         const ICON_FULLSCREEN = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
 
-        const rbBar = document.createElement("div");
+        const rbBar = createDiv();
         rbBar.className = "xmind-toolbar-rb";
 
         const zoomOutBtn = makeBtn(ICON_ZOOMOUT, t.view.zoomOut);
@@ -472,8 +472,8 @@ export class XMindView extends FileView {
 
         const fullscreenBtn = makeBtn(ICON_FULLSCREEN, t.view.fullscreen);
         fullscreenBtn.addEventListener("click", () => {
-          if (document.fullscreenElement === mind.el) {
-            void document.exitFullscreen();
+          if (activeDocument.fullscreenElement === mind.el) {
+            void activeDocument.exitFullscreen();
           } else {
             void mind.el.requestFullscreen();
           }
@@ -483,13 +483,13 @@ export class XMindView extends FileView {
         container.appendChild(rbBar);
 
         if (this.allSheets.length > 1) {
-          const sheetSelector = document.createElement("div");
+          const sheetSelector = createDiv();
           sheetSelector.className = "xmind-sheet-selector";
 
-          const select = document.createElement("select");
+          const select = createEl("select");
           select.className = "xmind-sheet-select";
           this.allSheets.forEach((sheet, i) => {
-            const option = document.createElement("option");
+            const option = createEl("option");
             option.value = String(i);
             option.textContent = sheet.title || `${t.defaults.canvas} ${i + 1}`;
             if (i === this.activeSheetIndex) option.selected = true;
@@ -580,7 +580,7 @@ export class XMindView extends FileView {
     });
 
     // Listen for any operation (edit/add/remove/move) → trigger auto-save
-    this.mind.bus.addListener("operation", (info) => {
+    this.mind.bus.addListener("operation", (_info) => {
       this.scheduleSave();
     });
 
@@ -618,7 +618,7 @@ export class XMindView extends FileView {
     this.registerEvent(
       this.app.workspace.on("css-change", () => {
         if (!this.mind) return;
-        const dark = document.body.classList.contains("theme-dark");
+        const dark = activeDocument.body.classList.contains("theme-dark");
         this.mind.changeTheme(
           dark ? MindElixir.DARK_THEME : MindElixir.THEME,
           true
@@ -630,8 +630,8 @@ export class XMindView extends FileView {
     const resizeObserver = new ResizeObserver(() => {
       if (!this.mind) return;
       // Debounce to avoid excessive calls during animated resize
-      if (this._resizeTimer !== null) clearTimeout(this._resizeTimer);
-      this._resizeTimer = setTimeout(() => {
+      if (this._resizeTimer !== null) activeWindow.clearTimeout(this._resizeTimer);
+      this._resizeTimer = activeWindow.setTimeout(() => {
         this._resizeTimer = null;
         if (!this.mind) return;
         this.mind.scaleFit();
@@ -652,8 +652,8 @@ export class XMindView extends FileView {
       const rootResizeObserver = new ResizeObserver(() => {
         if (!this.mind) return;
         // Debounce to avoid excessive layout updates
-        if (this._rootUpdateTimer !== null) clearTimeout(this._rootUpdateTimer);
-        this._rootUpdateTimer = setTimeout(() => {
+        if (this._rootUpdateTimer !== null) activeWindow.clearTimeout(this._rootUpdateTimer);
+        this._rootUpdateTimer = activeWindow.setTimeout(() => {
           this._rootUpdateTimer = null;
           if (!this.mind) return;
           // Apply custom layout directly
@@ -666,8 +666,8 @@ export class XMindView extends FileView {
       const rootObserver = new MutationObserver(() => {
         if (!this.mind) return;
         // Debounce to avoid excessive layout updates
-        if (this._rootUpdateTimer !== null) clearTimeout(this._rootUpdateTimer);
-        this._rootUpdateTimer = setTimeout(() => {
+        if (this._rootUpdateTimer !== null) activeWindow.clearTimeout(this._rootUpdateTimer);
+        this._rootUpdateTimer = activeWindow.setTimeout(() => {
           this._rootUpdateTimer = null;
           if (!this.mind) return;
           // Apply custom layout directly
@@ -701,8 +701,8 @@ export class XMindView extends FileView {
           // Listen for input changes
           inputBox.addEventListener("input", () => {
             if (!this.mind) return;
-            if (this._rootUpdateTimer !== null) clearTimeout(this._rootUpdateTimer);
-            this._rootUpdateTimer = setTimeout(() => {
+            if (this._rootUpdateTimer !== null) activeWindow.clearTimeout(this._rootUpdateTimer);
+            this._rootUpdateTimer = activeWindow.setTimeout(() => {
               this._rootUpdateTimer = null;
               if (!this.mind) return;
               // Apply custom layout directly
@@ -744,7 +744,7 @@ export class XMindView extends FileView {
         for (const mutation of mutations) {
           if (mutation.type === 'childList') {
             for (const node of Array.from(mutation.addedNodes)) {
-              if (node instanceof HTMLElement && node.id === 'input-box') {
+              if ((node as any).instanceOf(HTMLElement) && (node as HTMLElement).id === 'input-box') {
                 setupInputListener();
                 break;
               }
@@ -779,7 +779,7 @@ export class XMindView extends FileView {
         if (mutation.type === "childList") {
           // Only process addedNodes/removedNodes, not all descendants
           for (const node of Array.from(mutation.addedNodes)) {
-            if (node instanceof HTMLElement && node.id === "input-box") {
+            if ((node as any).instanceOf(HTMLElement) && (node as HTMLElement).id === "input-box") {
               // Found the input-box element, now hide the original text span
               const meParent = node.parentElement?.closest("me-parent");
               if (meParent instanceof HTMLElement) {
@@ -788,17 +788,16 @@ export class XMindView extends FileView {
                    // Use visibility: hidden instead of display: none
                    // This keeps the element in the layout but makes it invisible
                    textSpan.setCssStyles({ visibility: "hidden" });
-                   // Remember which text span we hid for this node
-                   hiddenTextSpans.set(node, textSpan);
+                   hiddenTextSpans.set(node as HTMLElement, textSpan);
                  }
               }
             }
           }
 
           for (const node of Array.from(mutation.removedNodes)) {
-            if (node instanceof HTMLElement && node.id === "input-box") {
+            if ((node as any).instanceOf(HTMLElement) && (node as HTMLElement).id === "input-box") {
               // Input-box removed, restore the text span
-              const textSpan = hiddenTextSpans.get(node);
+              const textSpan = hiddenTextSpans.get(node as HTMLElement);
                if (textSpan instanceof HTMLElement) {
                  // Restore visibility
                  textSpan.setCssStyles({ visibility: "visible" });
@@ -830,7 +829,7 @@ export class XMindView extends FileView {
       this.mind = null;
     }
     if (this.saveTimer !== null) {
-      clearTimeout(this.saveTimer);
+      activeWindow.clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
   }
@@ -847,9 +846,9 @@ export class XMindView extends FileView {
     if (delay === 0) return;
 
     if (this.saveTimer !== null) {
-      clearTimeout(this.saveTimer);
+      activeWindow.clearTimeout(this.saveTimer);
     }
-    this.saveTimer = setTimeout(() => {
+    this.saveTimer = activeWindow.setTimeout(() => {
       this.saveTimer = null;
       void this.saveNow();
     }, delay);
@@ -859,7 +858,7 @@ export class XMindView extends FileView {
     if (!this.file || !this.mind) return;
 
     if (this.saveTimer !== null) {
-      clearTimeout(this.saveTimer);
+      activeWindow.clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
 

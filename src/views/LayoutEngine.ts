@@ -219,7 +219,7 @@ export function assignPositions(
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export function makeSvg(): SVGSVGElement {
-  const svg = document.createElementNS(SVG_NS, "svg");
+  const svg = activeDocument.createElementNS(SVG_NS, "svg");
   svg.setAttribute("overflow", "visible");
   svg.setCssStyles({
     position: "absolute",
@@ -234,7 +234,7 @@ export function makeSvg(): SVGSVGElement {
 }
 
 export function makePath(d: string, color: string, width: string): SVGPathElement {
-  const path = document.createElementNS(SVG_NS, "path");
+  const path = activeDocument.createElementNS(SVG_NS, "path");
   path.setAttribute("d", d);
   path.setAttribute("stroke", color);
   path.setAttribute("fill", "none");
@@ -307,7 +307,7 @@ export function drawConnectors(
 
 export function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj; _rootWidthCache?: number }): void {
   const nodesEl = this.nodes;
-  if (!(nodesEl instanceof HTMLElement)) return;
+  if (!(nodesEl as any).instanceOf(HTMLElement)) return;
 
   const oldCustomSvg = nodesEl.querySelector("svg[data-xmind-custom]");
   if (oldCustomSvg) oldCustomSvg.remove();
