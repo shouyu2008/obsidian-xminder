@@ -250,8 +250,7 @@ export class XMindView extends FileView {
       // Patch: Fix node editing text display issue
       // When editing a node, the original text element should be hidden
       // to avoid showing "new node" alongside the input box
-      // NOTE: Disabled for now due to potential conflicts with mind-elixir internals
-      // this.patchNodeEditingDisplay();
+      this.patchNodeEditingDisplay();
 
       // Patch: allow dropping nodes onto root and fix drag-and-drop edge cases
       if (extendedMind.nodeData) {
@@ -781,9 +780,9 @@ export class XMindView extends FileView {
           for (const node of Array.from(mutation.addedNodes)) {
             if ((node as any).instanceOf(HTMLElement) && (node as HTMLElement).id === "input-box") {
               // Found the input-box element, now hide the original text span
-              const meParent = node.parentElement?.closest("me-parent");
-              if (meParent instanceof HTMLElement) {
-                const textSpan = meParent.querySelector("span.text");
+              const meTpc = node.parentElement?.closest("me-tpc");
+              if (meTpc instanceof HTMLElement) {
+                const textSpan = meTpc.querySelector("span.text");
                  if (textSpan instanceof HTMLElement) {
                    // Use visibility: hidden instead of display: none
                    // This keeps the element in the layout but makes it invisible
