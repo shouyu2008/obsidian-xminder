@@ -1,6 +1,6 @@
 # XMinder
 
-> 一个 [Obsidian](https://obsidian.md) 插件，用于在笔记库中直接读取、编辑和嵌入 [XMind](https://www.xmind.net) 思维导图文件。
+> 一个 [Obsidian](https://obsidian.md) 插件，用于在笔记库中直接新建、读取、编辑、嵌入思维导图，支持 xmind 格式。
 
 **[English](README.md) · [中文](README.zh.md)**
 
@@ -8,7 +8,7 @@
 
 ## 简介
 
-XMinder 为 Obsidian 带来完整的 XMind 思维导图支持。无需离开笔记工作流，即可打开 `.xmind` 文件进行交互式编辑。修改会自动保存回原始 `.xmind` 格式，与 XMind 桌面应用完全兼容。
+XMinder 为 Obsidian 带来完整的思维导图支持。无需离开笔记工作流，即可新建或打开 `.xmind` 文件进行交互式编辑。所有修改会自动保存回原始 `.xmind` 格式，与 XMind 桌面应用完全兼容。
 
 ---
 
@@ -125,7 +125,7 @@ mindmap
 
 ---
 
-## 项目自身相关介绍
+## 项目介绍
 
 ### 项目结构
 
