@@ -80,7 +80,7 @@ class XMindWidget extends WidgetType {
       mind.init(meData);
       
       // Auto-fit
-      activeWindow.setTimeout(() => {
+      window.setTimeout(() => {
         if (container.isConnected) {
           mind.scaleFit();
           mind.toCenter();

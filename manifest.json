@@ -2,7 +2,7 @@
   "id": "xminder",
   "name": "xminder",
   "version": "1.10.0",
-  "minAppVersion": "1.7.2",
+  "minAppVersion": "1.8.7",
   "description": "supports functions such as creating, viewing, editing XMind files, and embedding them into Markdown.",
   "author": "shouyu2008",
   "authorUrl": "https://github.com/shouyu2008",

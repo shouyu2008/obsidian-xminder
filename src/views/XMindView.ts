@@ -314,8 +314,8 @@ export class XMindView extends FileView {
         const mapCanvas = wrapper.querySelector(".map-canvas");
         if (mapCanvas instanceof HTMLElement) {
           mapCanvas.addEventListener("dragend", () => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
                 if (this.mind) customLinkDiv.call(this.mind);
               });
             });
@@ -570,8 +570,8 @@ export class XMindView extends FileView {
     }
 
     // Re-center after DOM layout is complete
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
         if (!this.mind) return;
         this.mind.scaleFit();
         this.mind.toCenter();
@@ -589,7 +589,7 @@ export class XMindView extends FileView {
       // Check if the selected node is the root node
       if (node && (node.id === 'root' || node.id === this.mind?.nodeData?.id)) {
         // Force a layout update when root node is selected (after edit)
-        requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
           if (this.mind) {
             // Apply custom layout directly
             customLinkDiv.call(this.mind);
@@ -604,7 +604,7 @@ export class XMindView extends FileView {
       // Check if the edited node is the root node
       if (node && (node.id === 'root' || node.id === this.mind?.nodeData?.id)) {
         // Force a layout update when root node edit is finished
-        requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
           if (this.mind) {
             // Apply custom layout directly
             customLinkDiv.call(this.mind);
@@ -629,8 +629,8 @@ export class XMindView extends FileView {
     const resizeObserver = new ResizeObserver(() => {
       if (!this.mind) return;
       // Debounce to avoid excessive calls during animated resize
-      if (this._resizeTimer !== null) activeWindow.clearTimeout(this._resizeTimer);
-      this._resizeTimer = activeWindow.setTimeout(() => {
+      if (this._resizeTimer !== null) window.clearTimeout(this._resizeTimer);
+      this._resizeTimer = window.setTimeout(() => {
         this._resizeTimer = null;
         if (!this.mind) return;
         this.mind.scaleFit();
@@ -651,8 +651,8 @@ export class XMindView extends FileView {
       const rootResizeObserver = new ResizeObserver(() => {
         if (!this.mind) return;
         // Debounce to avoid excessive layout updates
-        if (this._rootUpdateTimer !== null) activeWindow.clearTimeout(this._rootUpdateTimer);
-        this._rootUpdateTimer = activeWindow.setTimeout(() => {
+        if (this._rootUpdateTimer !== null) window.clearTimeout(this._rootUpdateTimer);
+        this._rootUpdateTimer = window.setTimeout(() => {
           this._rootUpdateTimer = null;
           if (!this.mind) return;
           // Apply custom layout directly
@@ -665,8 +665,8 @@ export class XMindView extends FileView {
       const rootObserver = new MutationObserver(() => {
         if (!this.mind) return;
         // Debounce to avoid excessive layout updates
-        if (this._rootUpdateTimer !== null) activeWindow.clearTimeout(this._rootUpdateTimer);
-        this._rootUpdateTimer = activeWindow.setTimeout(() => {
+        if (this._rootUpdateTimer !== null) window.clearTimeout(this._rootUpdateTimer);
+        this._rootUpdateTimer = window.setTimeout(() => {
           this._rootUpdateTimer = null;
           if (!this.mind) return;
           // Apply custom layout directly
@@ -700,8 +700,8 @@ export class XMindView extends FileView {
           // Listen for input changes
           inputBox.addEventListener("input", () => {
             if (!this.mind) return;
-            if (this._rootUpdateTimer !== null) activeWindow.clearTimeout(this._rootUpdateTimer);
-            this._rootUpdateTimer = activeWindow.setTimeout(() => {
+            if (this._rootUpdateTimer !== null) window.clearTimeout(this._rootUpdateTimer);
+            this._rootUpdateTimer = window.setTimeout(() => {
               this._rootUpdateTimer = null;
               if (!this.mind) return;
               // Apply custom layout directly
@@ -712,7 +712,7 @@ export class XMindView extends FileView {
           // Listen for blur (when editing finishes)
           inputBox.addEventListener("blur", () => {
             if (!this.mind) return;
-            requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
               if (this.mind) {
                 // Apply custom layout directly
                 customLinkDiv.call(this.mind);
@@ -725,7 +725,7 @@ export class XMindView extends FileView {
             if (!this.mind) return;
             if (e.key === "Enter") {
               // Force layout update when Enter is pressed
-              requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
                 if (this.mind) {
                   customLinkDiv.call(this.mind);
                 }
@@ -743,7 +743,7 @@ export class XMindView extends FileView {
         for (const mutation of mutations) {
           if (mutation.type === 'childList') {
             for (const node of Array.from(mutation.addedNodes)) {
-              if ((node as any).instanceOf(HTMLElement) && (node as HTMLElement).id === 'input-box') {
+              if (node instanceof HTMLElement && node.id === 'input-box') {
                 setupInputListener();
                 break;
               }
@@ -778,7 +778,7 @@ export class XMindView extends FileView {
         if (mutation.type === "childList") {
           // Only process addedNodes/removedNodes, not all descendants
           for (const node of Array.from(mutation.addedNodes)) {
-            if ((node as any).instanceOf(HTMLElement) && (node as HTMLElement).id === "input-box") {
+            if (node instanceof HTMLElement && node.id === "input-box") {
               // Found the input-box element, now hide the original text span
               const meTpc = node.parentElement?.closest("me-tpc");
               if (meTpc instanceof HTMLElement) {
@@ -787,16 +787,16 @@ export class XMindView extends FileView {
                    // Use visibility: hidden instead of display: none
                    // This keeps the element in the layout but makes it invisible
                    textSpan.setCssStyles({ visibility: "hidden" });
-                   hiddenTextSpans.set(node as HTMLElement, textSpan);
+                   hiddenTextSpans.set(node, textSpan);
                  }
               }
             }
           }
 
           for (const node of Array.from(mutation.removedNodes)) {
-            if ((node as any).instanceOf(HTMLElement) && (node as HTMLElement).id === "input-box") {
+            if (node instanceof HTMLElement && node.id === "input-box") {
               // Input-box removed, restore the text span
-              const textSpan = hiddenTextSpans.get(node as HTMLElement);
+              const textSpan = hiddenTextSpans.get(node);
                if (textSpan instanceof HTMLElement) {
                  // Restore visibility
                  textSpan.setCssStyles({ visibility: "visible" });
@@ -828,7 +828,7 @@ export class XMindView extends FileView {
       this.mind = null;
     }
     if (this.saveTimer !== null) {
-      activeWindow.clearTimeout(this.saveTimer);
+      window.clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
   }
@@ -845,9 +845,9 @@ export class XMindView extends FileView {
     if (delay === 0) return;
 
     if (this.saveTimer !== null) {
-      activeWindow.clearTimeout(this.saveTimer);
+      window.clearTimeout(this.saveTimer);
     }
-    this.saveTimer = activeWindow.setTimeout(() => {
+    this.saveTimer = window.setTimeout(() => {
       this.saveTimer = null;
       void this.saveNow();
     }, delay);
@@ -857,7 +857,7 @@ export class XMindView extends FileView {
     if (!this.file || !this.mind) return;
 
     if (this.saveTimer !== null) {
-      activeWindow.clearTimeout(this.saveTimer);
+      window.clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
 

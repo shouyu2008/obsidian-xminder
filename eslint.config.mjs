@@ -28,12 +28,15 @@ export default defineConfig([
       globals: {
         document: "readonly",
         window: "readonly",
+        activeDocument: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
         requestAnimationFrame: "readonly",
         cancelAnimationFrame: "readonly",
         navigator: "readonly",
         console: "readonly",
+        createDiv: "readonly",
+        createEl: "readonly",
       },
     },
 
