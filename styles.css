@@ -1,5 +1,4 @@
 /* stylelint-disable declaration-no-important, selector-type-no-unknown */
-/* csslint ignore:start */
 /* ==========================================================================
    obsidian-xminder — styles.css
    ========================================================================== */
@@ -33,7 +32,7 @@ body .xmind-mind-wrapper .map-container {
 }
 
 /* Ensure me-main fills the map-container */
-.xmind-mind-wrapper .map-container me-main {
+.xmind-mind-wrapper .map-container :is(me-main) {
   width: 100%;
   height: 100%;
 }
@@ -94,12 +93,12 @@ body .xmind-embed-container .map-container {
   height: 100%;
 }
 
-body .xmind-embed-container .map-container me-main {
+body .xmind-embed-container .map-container :is(me-main) {
   width: 100%;
   height: 100%;
 }
 
-.xmind-embed-container me-main {
+.xmind-embed-container :is(me-main) {
   width: 100%;
   height: 100%;
 }
@@ -224,13 +223,13 @@ body .markdown-source-view.mod-cm6 .cm-content .internal-embed[src$=".xmind"] {
 
 /* FIX: right-align every me-wrapper inside .lhs so each subtree expands
  * rightward (toward root) instead of all sharing the far-left boundary. */
-.xmind-mind-wrapper .map-container .lhs me-wrapper {
+.xmind-mind-wrapper .map-container .lhs :is(me-wrapper) {
   margin-inline-end: auto;
 }
 
 /* FIX: left-align every me-wrapper inside .rhs so each subtree expands
  * leftward (toward root) instead of all sharing the far-right boundary. */
-.xmind-mind-wrapper .map-container .rhs me-wrapper {
+.xmind-mind-wrapper .map-container .rhs :is(me-wrapper) {
   margin-inline-start: auto;
 }
 
@@ -241,21 +240,21 @@ body .xmind-mind-wrapper .map-container {
 }
 
 /* Level-2 node distance from root (default margin: 45px 65px). */
-body .xmind-mind-wrapper .map-container me-main > me-wrapper {
+body .xmind-mind-wrapper .map-container :is(me-main) > :is(me-wrapper) {
   margin-left: 50px;
   margin-right: 50px;
 }
 
 /* Ensure consistent horizontal spacing for both sides
  * Increase vertical breathing room to prevent node overlap with long text */
-body .xmind-mind-wrapper .map-container me-children > me-wrapper {
+body .xmind-mind-wrapper .map-container :is(me-children) > :is(me-wrapper) {
   margin-top: 8px;
   margin-bottom: 8px;
 }
 
 /* Level 3 node topic: pill style */
-.xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc,
-body .xmind-embed-container .map-container me-children > me-wrapper > me-parent > me-tpc {
+.xmind-mind-wrapper .map-container :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc),
+body .xmind-embed-container .map-container :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc) {
   background-color: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
@@ -265,8 +264,8 @@ body .xmind-embed-container .map-container me-children > me-wrapper > me-parent 
 }
 
 /* Level 4+ node topic: lighter pill */
-.xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc,
-body .xmind-embed-container .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
+.xmind-mind-wrapper .map-container :is(me-children) :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc),
+body .xmind-embed-container .map-container :is(me-children) :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc) {
   background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
@@ -275,21 +274,21 @@ body .xmind-embed-container .map-container me-children me-children > me-wrapper 
 }
 
 /* Node cursor: pointer on hover, text cursor when editing */
-.xmind-mind-wrapper .map-container me-tpc,
-body .xmind-embed-container .map-container me-tpc {
+.xmind-mind-wrapper .map-container :is(me-tpc),
+body .xmind-embed-container .map-container :is(me-tpc) {
   cursor: pointer;
 }
 .xmind-mind-wrapper .map-container #input-box,
-.xmind-mind-wrapper .map-container me-tpc[contenteditable],
-.xmind-mind-wrapper .map-container me-tpc[contenteditable="true"],
-.xmind-mind-wrapper .map-container me-tpc[contenteditable="plaintext-only"],
+.xmind-mind-wrapper .map-container :is(me-tpc)[contenteditable],
+.xmind-mind-wrapper .map-container :is(me-tpc)[contenteditable="true"],
+.xmind-mind-wrapper .map-container :is(me-tpc)[contenteditable="plaintext-only"],
 body .xmind-embed-container .map-container #input-box {
   cursor: text;
 }
 
 /* Selected node — bright outline for all selected nodes (root, L1, L2+) */
-.xmind-mind-wrapper .map-container me-tpc.selected,
-body .xmind-embed-container .map-container me-tpc.selected {
+.xmind-mind-wrapper .map-container :is(me-tpc).selected,
+body .xmind-embed-container .map-container :is(me-tpc).selected {
   outline: 3px solid #4fc3f7;
   outline-offset: 2px;
   border-color: #4fc3f7;
@@ -297,11 +296,11 @@ body .xmind-embed-container .map-container me-tpc.selected {
 }
 
 /* Drag-and-drop insert preview — match selected style for all nodes including root */
-body .xmind-mind-wrapper .map-container me-tpc .insert-preview.show {
+body .xmind-mind-wrapper .map-container :is(me-tpc) .insert-preview.show {
   background: none;
   opacity: 1;
 }
-body .xmind-mind-wrapper .map-container me-tpc .insert-preview.in.show {
+body .xmind-mind-wrapper .map-container :is(me-tpc) .insert-preview.in.show {
   outline: 3px solid #4fc3f7;
   outline-offset: 2px;
   box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
@@ -310,8 +309,8 @@ body .xmind-mind-wrapper .map-container me-tpc .insert-preview.in.show {
   top: 0;
   pointer-events: none;
 }
-.xmind-mind-wrapper .map-container me-tpc .insert-preview.before.show,
-body .xmind-mind-wrapper .map-container me-tpc .insert-preview.after.show {
+.xmind-mind-wrapper .map-container :is(me-tpc) .insert-preview.before.show,
+body .xmind-mind-wrapper .map-container :is(me-tpc) .insert-preview.after.show {
   height: 3px;
   background: #4fc3f7;
   border-radius: 2px;
@@ -323,7 +322,7 @@ body .xmind-mind-wrapper .map-container me-tpc .insert-preview.after.show {
  * feedback to before/after sibling lines. We force it to show the full selection
  * outline instead to maintain a clear parent-child drop target visual across 
  * the entire root node area, matching the selection design as requested. */
-body .xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.show {
+body .xmind-mind-wrapper .map-container :is(me-root) > :is(me-tpc) .insert-preview.show {
   display: block;
   height: 100%;
   top: 0;
@@ -338,14 +337,14 @@ body .xmind-mind-wrapper .map-container me-root > me-tpc .insert-preview.show {
 }
 
 /* Theme light overrides */
-.theme-light .xmind-mind-wrapper .map-container me-children > me-wrapper > me-parent > me-tpc,
-.theme-light .xmind-embed-container .map-container me-children > me-wrapper > me-parent > me-tpc {
+.theme-light .xmind-mind-wrapper .map-container :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc),
+.theme-light .xmind-embed-container .map-container :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc) {
   background-color: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
 }
 
-.theme-light .xmind-mind-wrapper .map-container me-children me-children > me-wrapper > me-parent > me-tpc,
-.theme-light .xmind-embed-container .map-container me-children me-children > me-wrapper > me-parent > me-tpc {
+.theme-light .xmind-mind-wrapper .map-container :is(me-children) :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc),
+.theme-light .xmind-embed-container .map-container :is(me-children) :is(me-children) > :is(me-wrapper) > :is(me-parent) > :is(me-tpc) {
   background-color: rgba(0, 0, 0, 0.02);
   border-color: rgba(0, 0, 0, 0.07);
 }
@@ -501,7 +500,7 @@ body .xmind-embed-container .map-container {
   height: 100%;
 }
 
-.xmind-embed-container .map-container me-main {
+.xmind-embed-container .map-container :is(me-main) {
    width: 100%;
    height: 100%;
 }
@@ -513,5 +512,4 @@ body .xmind-embed-container .map-container {
    input, we hide the span.text whenever #input-box is present in the parent.
    This CSS-only solution avoids JavaScript interference with mind-elixir.
    -------------------------------------------------------------------------- */
-/* csslint ignore:end */
 
