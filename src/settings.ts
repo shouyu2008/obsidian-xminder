@@ -25,6 +25,10 @@ export class XMindSettingTab extends PluginSettingTab {
   }
 
   display(): void {
+    this.displaySettings();
+  }
+
+  displaySettings(): void {
     const { containerEl } = this;
     const t = i18n.t();
     containerEl.empty();
@@ -53,7 +57,7 @@ export class XMindSettingTab extends PluginSettingTab {
           .onClick(async () => {
             this.plugin.settings.autoSaveDelay = DEFAULT_SETTINGS.autoSaveDelay;
             await this.plugin.saveSettings();
-            this.display();
+            this.displaySettings();
           })
       );
 
@@ -77,7 +81,7 @@ export class XMindSettingTab extends PluginSettingTab {
           .onClick(async () => {
             this.plugin.settings.embedHeight = DEFAULT_SETTINGS.embedHeight;
             await this.plugin.saveSettings();
-            this.display();
+            this.displaySettings();
           })
       );
 

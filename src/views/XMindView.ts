@@ -312,7 +312,7 @@ export class XMindView extends FileView {
         // 5. Layout safety: Force refresh after any drag ends regardless of success.
         // This handles "release without snap" cases by resetting the absolute layout.
         const mapCanvas = wrapper.querySelector(".map-canvas");
-        if (mapCanvas instanceof HTMLElement) {
+        if (mapCanvas && mapCanvas.instanceOf(HTMLElement)) {
           mapCanvas.addEventListener("dragend", () => {
             window.requestAnimationFrame(() => {
               window.requestAnimationFrame(() => {
@@ -335,7 +335,7 @@ export class XMindView extends FileView {
       const mapEl = wrapper.querySelector(".map-canvas");
       const mind = this.mind;
 
-      if (container instanceof HTMLElement && mapEl instanceof HTMLElement && mind) {
+      if (container && container.instanceOf(HTMLElement) && mapEl && mapEl.instanceOf(HTMLElement) && mind) {
         // --- SVG icons ---
         const ICON_POINTER = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>`;
         const ICON_HAND = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8H12c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>`;
@@ -353,7 +353,7 @@ export class XMindView extends FileView {
 
         const updateBtnIcon = (btn: HTMLButtonElement, icon: string): void => {
           const wrapper = btn.querySelector(".xmind-toolbar-icon");
-          if (wrapper instanceof HTMLElement) {
+          if (wrapper && wrapper.instanceOf(HTMLElement)) {
             renderSvg(wrapper, icon);
             return;
           }
@@ -391,7 +391,7 @@ export class XMindView extends FileView {
         const helpBtn = makeBtn(ICON_HELP, t.view.shortcutsHelp);
         helpBtn.addEventListener("click", () => {
           const helpEl = container.querySelector(".xmind-help-panel");
-          if (helpEl instanceof HTMLElement) {
+          if (helpEl && helpEl.instanceOf(HTMLElement)) {
             helpEl.setCssStyles({
               display: helpEl.style.display === "none" ? "block" : "none",
             });
@@ -559,7 +559,7 @@ export class XMindView extends FileView {
       "c", "x", "v", "+", "-", "0", "z", "Z", "y",
     ]);
     const mapCanvas = wrapper.querySelector(".map-canvas");
-    if (mapCanvas instanceof HTMLElement) {
+    if (mapCanvas && mapCanvas.instanceOf(HTMLElement)) {
       mapCanvas.addEventListener("keydown", (e: KeyboardEvent) => {
         // Let mind-elixir handle its known keys; stop propagation for all others
         // so that mind-elixir's blanket preventDefault() does not fire.
@@ -743,7 +743,7 @@ export class XMindView extends FileView {
         for (const mutation of mutations) {
           if (mutation.type === 'childList') {
             for (const node of Array.from(mutation.addedNodes)) {
-              if (node instanceof HTMLElement && node.id === 'input-box') {
+              if (node.instanceOf(HTMLElement) && node.id === 'input-box') {
                 setupInputListener();
                 break;
               }
@@ -766,7 +766,7 @@ export class XMindView extends FileView {
     if (!this.mind || !this.contentEl) return;
 
     const mapCanvas = this.contentEl.querySelector(".map-canvas");
-    if (!(mapCanvas instanceof HTMLElement)) return;
+    if (!mapCanvas || !mapCanvas.instanceOf(HTMLElement)) return;
 
     // Track which text spans are currently hidden due to editing
     const hiddenTextSpans = new WeakMap<HTMLElement, HTMLElement>();
@@ -778,12 +778,12 @@ export class XMindView extends FileView {
         if (mutation.type === "childList") {
           // Only process addedNodes/removedNodes, not all descendants
           for (const node of Array.from(mutation.addedNodes)) {
-            if (node instanceof HTMLElement && node.id === "input-box") {
+            if (node.instanceOf(HTMLElement) && node.id === "input-box") {
               // Found the input-box element, now hide the original text span
               const meTpc = node.parentElement?.closest("me-tpc");
-              if (meTpc instanceof HTMLElement) {
+              if (meTpc && meTpc.instanceOf(HTMLElement)) {
                 const textSpan = meTpc.querySelector("span.text");
-                 if (textSpan instanceof HTMLElement) {
+                 if (textSpan && textSpan.instanceOf(HTMLElement)) {
                    // Use visibility: hidden instead of display: none
                    // This keeps the element in the layout but makes it invisible
                    textSpan.setCssStyles({ visibility: "hidden" });
@@ -794,10 +794,10 @@ export class XMindView extends FileView {
           }
 
           for (const node of Array.from(mutation.removedNodes)) {
-            if (node instanceof HTMLElement && node.id === "input-box") {
+            if (node.instanceOf(HTMLElement) && node.id === "input-box") {
               // Input-box removed, restore the text span
               const textSpan = hiddenTextSpans.get(node);
-               if (textSpan instanceof HTMLElement) {
+               if (textSpan && textSpan.instanceOf(HTMLElement)) {
                  // Restore visibility
                  textSpan.setCssStyles({ visibility: "visible" });
                }
@@ -810,7 +810,7 @@ export class XMindView extends FileView {
     // Only observe me-tpc elements (node containers) for input-box additions
     // This is more targeted than observing the entire map-canvas
     const meRoot = mapCanvas.querySelector("me-root");
-    if (meRoot instanceof HTMLElement) {
+    if (meRoot && meRoot.instanceOf(HTMLElement)) {
       // Observe me-tpc elements (the direct containers that will have input-box as child)
       observer.observe(meRoot, { childList: true, subtree: true });
     } else {

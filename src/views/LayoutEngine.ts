@@ -69,9 +69,9 @@ export function buildLayoutTree(
     const wrappers = Array.from(meChildren.children);
     for (const wrapper of wrappers) {
       const meParent = wrapper.querySelector(":scope > me-parent");
-      if (!(meParent instanceof HTMLElement)) continue;
+      if (!meParent || !meParent.instanceOf(HTMLElement)) continue;
       const tpc = meParent.querySelector("me-tpc");
-      if (!(tpc instanceof HTMLElement)) continue;
+      if (!tpc || !tpc.instanceOf(HTMLElement)) continue;
       
       const id = tpc.dataset.nodeid?.replace(/^me/, "") ?? "";
       const obj = findNodeById(parentObj, id) ?? (tpc as { nodeObj?: NodeObj }).nodeObj as NodeObj;
@@ -80,7 +80,7 @@ export function buildLayoutTree(
       const h = tpc.offsetHeight;
 
       const meChildrenEl = wrapper.querySelector(":scope > me-children");
-      const childNodes = meChildrenEl instanceof HTMLElement && (obj.expanded !== false)
+      const childNodes = meChildrenEl && meChildrenEl.instanceOf(HTMLElement) && (obj.expanded !== false)
         ? buildChildren(meChildrenEl, obj, dir, depth + 1)
         : [];
 
@@ -111,15 +111,15 @@ export function buildLayoutTree(
     const wrappers = Array.from(lhsMain.children);
     for (const wrapper of wrappers) {
       const meParent = wrapper.querySelector(":scope > me-parent");
-      if (!(meParent instanceof HTMLElement)) continue;
+      if (!meParent || !meParent.instanceOf(HTMLElement)) continue;
       const tpc = meParent.querySelector("me-tpc");
-      if (!(tpc instanceof HTMLElement)) continue;
+      if (!tpc || !tpc.instanceOf(HTMLElement)) continue;
       const id = tpc.dataset.nodeid?.replace(/^me/, "") ?? "";
       const obj = findNodeById(nodeData, id) ?? (tpc as { nodeObj?: NodeObj }).nodeObj as NodeObj;
       const w = tpc.offsetWidth;
       const h = tpc.offsetHeight;
       const meChildrenEl = wrapper.querySelector(":scope > me-children");
-      const children = meChildrenEl instanceof HTMLElement && (obj.expanded !== false)
+      const children = meChildrenEl && meChildrenEl.instanceOf(HTMLElement) && (obj.expanded !== false)
         ? buildChildren(meChildrenEl, obj, "lhs", 2)
         : [];
       lhsNodes.push({ nodeObj: obj, tpc, parent: meParent, width: w, height: h, children, x: 0, y: 0, subtreeH: 0, direction: "lhs", depth: 1 });
@@ -130,15 +130,15 @@ export function buildLayoutTree(
     const wrappers = Array.from(rhsMain.children);
     for (const wrapper of wrappers) {
       const meParent = wrapper.querySelector(":scope > me-parent");
-      if (!(meParent instanceof HTMLElement)) continue;
+      if (!meParent || !meParent.instanceOf(HTMLElement)) continue;
       const tpc = meParent.querySelector("me-tpc");
-      if (!(tpc instanceof HTMLElement)) continue;
+      if (!tpc || !tpc.instanceOf(HTMLElement)) continue;
       const id = tpc.dataset.nodeid?.replace(/^me/, "") ?? "";
       const obj = findNodeById(nodeData, id) ?? (tpc as { nodeObj?: NodeObj }).nodeObj as NodeObj;
       const w = tpc.offsetWidth;
       const h = tpc.offsetHeight;
       const meChildrenEl = wrapper.querySelector(":scope > me-children");
-      const children = meChildrenEl instanceof HTMLElement && (obj.expanded !== false)
+      const children = meChildrenEl && meChildrenEl.instanceOf(HTMLElement) && (obj.expanded !== false)
         ? buildChildren(meChildrenEl, obj, "rhs", 2)
         : [];
       rhsNodes.push({ nodeObj: obj, tpc, parent: meParent, width: w, height: h, children, x: 0, y: 0, subtreeH: 0, direction: "rhs", depth: 1 });
@@ -307,7 +307,7 @@ export function drawConnectors(
 
 export function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj; _rootWidthCache?: number }): void {
   const nodesEl = this.nodes;
-  if (!(nodesEl instanceof HTMLElement)) return;
+  if (!nodesEl || !nodesEl.instanceOf(HTMLElement)) return;
 
   const oldCustomSvg = nodesEl.querySelector("svg[data-xmind-custom]");
   if (oldCustomSvg) oldCustomSvg.remove();
@@ -410,7 +410,7 @@ export function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj; _r
         padding: "0", margin: "0", direction: "ltr",
       });
       const epd = meParent.querySelector("me-epd");
-      if (epd instanceof HTMLElement) {
+      if (epd && epd.instanceOf(HTMLElement)) {
         epd.setCssStyles({
           position: "absolute",
           top: `${(node.height - 18) / 2}px`,
