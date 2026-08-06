@@ -24,3 +24,8 @@ test-vault/
 #claude
 .claude/
 
+#github
+.github/
+
+#qoder
+.qoder/
