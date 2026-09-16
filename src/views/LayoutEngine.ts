@@ -449,7 +449,7 @@ export function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj; _r
   const actualRootH = meRootEl.offsetHeight;
 
   const linesEl = nodesEl.querySelector("svg.lines");
-  if (linesEl instanceof SVGSVGElement) linesEl.replaceChildren();
+  if (linesEl && linesEl.instanceOf(SVGSVGElement)) linesEl.replaceChildren();
   nodesEl.querySelectorAll("svg.subLines").forEach((s) => s.remove());
 
   const svg = makeSvg();
