@@ -306,7 +306,7 @@ export function drawConnectors(
 }
 
 export function customLinkDiv(this: MindElixirInstance & { nodeData: NodeObj; _rootWidthCache?: number }): void {
-  const nodesEl = this.nodes;
+  const nodesEl: HTMLElement | null = this.nodes;
   if (!nodesEl || !nodesEl.instanceOf(HTMLElement)) return;
 
   const oldCustomSvg = nodesEl.querySelector("svg[data-xmind-custom]");

@@ -1,4 +1,4 @@
-import { getLanguage, type App } from "obsidian";
+import { getLanguage } from "obsidian";
 
 export type Locale = "zh" | "en";
 
@@ -269,8 +269,8 @@ const enStrings: I18nStrings = {
   },
 };
 
-function getObsidianLocale(app: App): Locale {
-  const lang = getLanguage();
+function getObsidianLocale(): Locale {
+  const lang = getLanguage().toLowerCase();
   return lang.startsWith("zh") ? "zh" : "en";
 }
 
@@ -278,8 +278,8 @@ class I18n {
   private locale: Locale = "en";
   private strings: I18nStrings = enStrings;
 
-  init(app: App): void {
-    this.locale = getObsidianLocale(app);
+  init(): void {
+    this.locale = getObsidianLocale();
     this.strings = this.locale === "zh" ? zhStrings : enStrings;
   }
 

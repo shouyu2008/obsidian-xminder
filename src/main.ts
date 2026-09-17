@@ -37,7 +37,7 @@ export default class XMindPlugin extends Plugin {
   settings!: XMindPluginSettings;
 
   async onload(): Promise<void> {
-    i18n.init(this.app);
+    i18n.init();
     await this.loadSettings();
 
     addIcon("xmind-icon", XMIND_ICON);
