@@ -1,6 +1,6 @@
 {
   "name": "obsidian-xminder",
-  "version": "1.11.0",
+  "version": "1.11.1",
   "description": "supports functions such as creating, viewing, editing XMind files, and embedding them into Markdown.",
   "main": "main.js",
   "author": {
@@ -37,6 +37,7 @@
     "eslint-plugin-obsidianmd": "^0.4.2",
     "obsidian": "^1.13.1",
     "tslib": "2.6.2",
-    "typescript": "5.4.5"
+    "typescript": "5.4.5",
+    "typescript-eslint": "^8.70.0"
   }
 }

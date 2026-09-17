@@ -242,7 +242,7 @@ export class XMindView extends FileView {
 
       // Inject custom linkDiv before init() so every layout call uses it
       const extendedMind = this.mind as MindElixirInstance & ExtendedMindElixirInstance;
-      const linkDiv = customLinkDiv.bind(this.mind) as (this: MindElixirInstance) => void;
+      const linkDiv = customLinkDiv.bind(this.mind);
       extendedMind.linkDiv = linkDiv;
 
       this.mind.init(data);
@@ -265,49 +265,49 @@ export class XMindView extends FileView {
           });
         };
 
-        applyParentPatch(extendedMind.nodeData as unknown as Record<string, unknown>);
+        applyParentPatch(extendedMind.nodeData);
 
-        // Use unknown bridge to avoid pollution from potentially any-typed MindElixirInstance
-        const mind = extendedMind as unknown as ExtendedMindElixirInstance;
+        // Re-type to the extended instance whose patched members are declared below
+        const mind: ExtendedMindElixirInstance = extendedMind;
 
         // 2. Patch refresh() so the parent patch survives undo/redo
-        const originalRefresh = (mind.refresh.bind(mind) as unknown) as (data?: LocalMindElixirData) => void;
-        mind.refresh = ((data?: LocalMindElixirData): void => {
+        const originalRefresh = mind.refresh.bind(mind);
+        mind.refresh = (data?: LocalMindElixirData): void => {
           originalRefresh(data);
-          if (mind.nodeData) applyParentPatch(mind.nodeData as unknown as Record<string, unknown>);
-        }) as (data?: LocalMindElixirData) => void;
+          if (mind.nodeData) applyParentPatch(mind.nodeData);
+        };
 
         // 3. Patch moveNodeBefore/After to redirect to moveNodeIn when the target is root.
         // This prevents the "node loss" bug where dropping on root edges removes nodes
         // from their parent but fails to attach them back because root has no siblings.
-        const originalMoveBefore = (mind.moveNodeBefore.bind(mind) as unknown) as (nodes: Topic[], target: Topic) => void | Promise<void>;
-        const originalMoveAfter = (mind.moveNodeAfter.bind(mind) as unknown) as (nodes: Topic[], target: Topic) => void | Promise<void>;
+        const originalMoveBefore = mind.moveNodeBefore.bind(mind);
+        const originalMoveAfter = mind.moveNodeAfter.bind(mind);
 
-        mind.moveNodeBefore = ((nodes: Topic[], target: Topic): void | Promise<void> => {
+        mind.moveNodeBefore = (nodes: Topic[], target: Topic): void | Promise<void> => {
           if (target?.tagName === 'ME-TPC' && target.parentElement?.tagName === 'ME-ROOT') {
             return mind.moveNodeIn(nodes, target);
           }
           return originalMoveBefore(nodes, target);
-        }) as (nodes: Topic[], target: Topic) => void | Promise<void>;
+        };
 
-        mind.moveNodeAfter = ((nodes: Topic[], target: Topic): void | Promise<void> => {
+        mind.moveNodeAfter = (nodes: Topic[], target: Topic): void | Promise<void> => {
           if (target?.tagName === 'ME-TPC' && target.parentElement?.tagName === 'ME-ROOT') {
             return mind.moveNodeIn(nodes, target);
           }
           return originalMoveAfter(nodes, target);
-        }) as (nodes: Topic[], target: Topic) => void | Promise<void>;
+        };
 
         // 4. Ensure getData() always includes parent=true for root topic in exports
-        const originalGetData = (mind.getData.bind(mind) as unknown) as () => LocalMindElixirData;
-        mind.getData = ((): LocalMindElixirData => {
+        const originalGetData = mind.getData.bind(mind);
+        mind.getData = (): LocalMindElixirData => {
           const data = originalGetData();
           if (data?.nodeData) {
-            // Use Record cast to bypass type check safely for the parent boolean property
-            const rootNode = data.nodeData as unknown as Record<string, unknown>;
+            // View the node as a record so the extra `parent` flag can be set
+            const rootNode: Record<string, unknown> = data.nodeData;
             rootNode.parent = true;
           }
           return data;
-        }) as () => LocalMindElixirData;
+        };
 
         // 5. Layout safety: Force refresh after any drag ends regardless of success.
         // This handles "release without snap" cases by resetting the absolute layout.
